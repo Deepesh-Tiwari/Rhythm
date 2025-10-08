@@ -1,0 +1,20 @@
+{
+  "name": "rhythm",
+  "version": "1.0.0",
+  "description": "App to connect people on basis of there music taste",
+  "keywords": [
+    "Node.js",
+    "Backend"
+  ],
+  "license": "ISC",
+  "author": "Deepesh Tiwari",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
