@@ -3,10 +3,43 @@ const express = require('express');
 const app = express();
 
 
+// app.use("/user", (req, res) => {
+//     console.log("the req just hangs up when you send nothing !!!")
+// })
+
+app.use("/", (req, res, next) => {
+    console.log("this is the first middleware !!!");
+    next();
+});
+
 // Response Handler
-app.get("/user",(req, res) => {
-    res.send("get call to user route");
-})
+// ans multiple response handler
+app.get(
+    "/user",
+    // OKAY !! This is not a request handler now 
+    // as we are not sending response here it is not request handler
+    // it is executing before a req handler and it is middleware
+    [(req, res, next) => {
+        //res.send("get call to user route first res handler");
+        console.log("handling using first res handler");
+        next();
+    },
+    (req, res, next) => {
+        console.log("handling using second res handler");
+        //res.send("get call to user route second res handler");
+        next();
+    },
+    (req, res, next) => {
+        console.log("handling using third res handler");
+        //res.send("get call to user route third res handler");
+        next();
+    }],
+    (req, res, next) => {
+        console.log("handling using fourth res handler");
+        res.send("get call to user route fourth res handler");
+        //next();
+    }
+)
 
 // Response Handler
 app.put("/user",(req, res) => {
