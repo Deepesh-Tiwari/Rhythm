@@ -3,18 +3,62 @@ const app = express();
 const {adminChecker, userChecker} = require('./middlewares/authMiddleware')
 const {connectDB } = require("./config/database")
 const {User} = require('./models/user');
+const {validateSignUp} = require('./utils/validation')
+const bcrypt = require("bcrypt");
+
 
 app.use(express.json());
 
 app.post("/signUp", async(req, res) => {
-    //console.log(req.body);
-    const user = new User(req.body);
-
+    
     try {
+
+        const { userName, emailId, password } = req.body;
+        // validate the data
+        validateSignUp(req);
+
+        //encrypt password
+        const rhashedPassword = await bcrypt.hash(password, 10)
+
+        // save the user
+        const user = new User({
+            userName,
+            emailId,
+            hashedPassword : rhashedPassword,
+        });
+
+        // then save it
         await user.save();
         res.send("user created sucessfully");
     } catch (error) {
-        res.status(400).send("Some Problem with server" + error.message);
+        res.status(400).send("Some Problem with server : " + error.message);
+    }
+
+})
+
+app.post("/login", async (req, res) => {
+
+    try {
+        // get user info from body
+        const {emailId, password} = req.body;
+
+        // verify password
+        const user = await User.findOne({emailId : emailId});
+
+        if(!user){
+            throw new Error("Invalid Creditials")
+        }
+
+        const isValid = await bcrypt.compare(password, user.hashedPassword);
+
+        if(!isValid){
+            throw new Error("Invalid Credentials");
+        }
+
+        res.send("Login Sucessfull");
+
+    } catch (error) {
+        res.status(400).send("Some Problem with server : " + error.message);
     }
 
 })
@@ -51,6 +95,16 @@ app.patch("/updateUser", async(req, res) => {
 
 
     try {
+
+        const allowedUpdates = ["id", "userName", "displayName","bio","age","gender","skills"];
+
+        const isAllowed = Object.keys(data).every((k) => {
+            return allowedUpdates.includes(k);
+        });
+
+        if(!isAllowed){
+            throw new Error("Update not allowed");
+        }
         const user = await User.findByIdAndUpdate(id, data, { returnDocument: "before" , runValidators: true});
         res.send(user);
     } catch (error) {
@@ -67,7 +121,7 @@ app.delete("/deleteUser", async(req, res) => {
         const user = await User.findOneAndDelete(id);
         res.send(user);
     } catch (error) {
-        res.status(400).send("Some Problem with server" +  error.message);
+        res.status(400).send("Some Problem with server : " +  error.message);
     }
 
 })
