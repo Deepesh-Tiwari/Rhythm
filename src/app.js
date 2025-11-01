@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 //Import routes
 const authRoutes = require("./routes/authRoutes")
 const userRoutes = require("./routes/userRoutes")
+const socialRoutes = require('./routes/socialRoutes')
 
 
 app.use(express.json());
@@ -13,6 +14,7 @@ app.use(cookieParser());
 
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
+app.use("/users", socialRoutes);
 
 
 connectDB()

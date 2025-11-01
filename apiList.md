@@ -3,12 +3,11 @@
 # Authentication ( authRoutes )
 - POST /auth/signup
 - POST /auth/login
-- GET /auth/logout
+- POST /auth/logout
 - GET /auth/spotify
 - GET /auth/spotify/callback
-- POST /auth/logout
-- POST /auth/request-reset
-- POST /auth/verify-reset-otp
+- POST /auth/password-reset
+- POST /auth/password-reset/verify
 
 # Users and Profiles ( userRoutes )
 - GET /users/me
@@ -21,10 +20,9 @@
 - GET /users/:username/profile/music
 
 # Socials and Matching ( socialRoutes )
-- POST /users/requests/:username
+- POST /users/requests
+- PATCH/users/requests/:requestId
 - GET /users/requests
-- POST /users/requests/:requestId/accept
-- POST /users/requests/:requestId/reject
 - DELETE /users/:username/unfriend
 - GET /users/recommendations
 
@@ -57,7 +55,7 @@
 # Room chat ( chatRoutes )
 - GET /rooms/:roomId/messages
 - POST /rooms/:roomId/messages
-- /rooms/:roomId/messages/:messageId
+- GET /rooms/:roomId/messages/:messageId
 
 # Skip playback appeals( VOTING WILL USE WEBSOCKETS THESE ARE FOR IF USER DISCONNECTS ) ( playbackRoutes )
 - POST /rooms/:roomId/appeals

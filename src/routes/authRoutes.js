@@ -3,8 +3,10 @@ const bcrypt = require("bcrypt");
 const querystring = require("querystring");
 const crypto = require("crypto");
 const axios = require("axios");
+const nodemailer = require("nodemailer");
 const User = require("../models/user");
 const { validateSignUp } = require("../utils/validation")
+const sendEmail = require('../services/emailService');
 const authRouter = express.Router();
 
 
@@ -101,7 +103,7 @@ authRouter.post("/login", async (req, res) => {
 
 })
 
-authRouter.get("/logout", (req, res) => {
+authRouter.post("/logout", (req, res) => {
 
     res.cookie("token", null, {
         httpOnly: true,
@@ -253,6 +255,92 @@ authRouter.get("/spotify/callback", async (req, res) => {
         });
         res.send("Login Sucessfull");
         
+    } catch (error) {
+        res.status(400).send("Some Problem with server : " + error.message);
+    }
+})
+
+authRouter.post("/reset-password", async (req, res) => {
+
+    try {
+
+        const {email} = req.body;
+        if (!email) {
+            return res.status(400).json({ message: "Email is required." });
+        }
+
+        const user = await User.findOne({email : email});
+        if(!user){
+            throw new Error("Password reset Email sent to user Registed email")
+        }
+
+        if (user.spotify && user.spotify.spotifyId && !user.passwordHash) {
+            throw new Error("Must Login using spotify only");
+        }
+        const token = generateRandomString(30);
+        console.log(token);
+
+        const hashedToken = crypto
+            .createHash('sha256')
+            .update(token)
+            .digest('hex');
+
+        user.resetPasswordToken = hashedToken;
+        user.resetPasswordExpires = Date.now() + 10 * 60 * 1000;
+        await user.save();
+
+
+
+        const resetURL = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+        const emailText = `You are receiving this email because you (or someone else) have requested the reset of a password for your Rhythm account.\n\nPlease click on the following link, or paste it into your browser to complete the process:\n\n${resetURL}\n\nThis link will expire in 10 minutes.\n\nIf you did not request this, please ignore this email and your password will remain unchanged.`;
+
+        // configure nodemailer for later
+        // await sendEmail({
+        //     to: user.email,
+        //     subject: 'Rhythm - Password Reset Request',
+        //     text: emailText,
+        // });
+
+        res.status(200).json({message: "Password reset Email sent to user Registed email"})
+        
+    } catch (error) {
+        res.status(400).send("Some Problem with server : " + error.message);
+    }
+})
+
+authRouter.post("/reset-password/verify", async(req, res) => {
+    try {
+
+        const {token, newPassword} = req.body;
+        if (!token || !newPassword) {
+            return res.status(400).json({ message: "Token and new password are required." });
+        }
+        // add more checks in future
+        if (newPassword.length < 8) {
+            return res.status(400).json({ message: "Password must be at least 8 characters long." });
+        }
+
+        const hashedToken = crypto
+            .createHash('sha256')
+            .update(token)
+            .digest('hex');
+
+        const user = await User.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpires: { $gt: Date.now() } // Check that the expiry date is in the future
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: "Password reset token is invalid or has expired." });
+        }
+
+        user.passwordHash = await bcrypt.hash(newPassword, 10);
+
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        res.status(200).json({ message: "Password has been reset successfully." });
     } catch (error) {
         res.status(400).send("Some Problem with server : " + error.message);
     }
