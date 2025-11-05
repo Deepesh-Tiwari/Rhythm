@@ -1,0 +1,14 @@
+# For connecting to external services
+pinecone
+pika
+python-dotenv
+axios # We'll use this for the vocabulary script
+
+# For data and numerical operations
+numpy
+pandas # Very useful for data handling
+
+# For the web API
+Flask
+
+pymongo
