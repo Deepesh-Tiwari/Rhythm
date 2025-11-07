@@ -1,0 +1,30 @@
+# --- General ---
+# Environment variables - NEVER commit these
+.env
+*.env
+.env.*
+
+# --- Node.js / Backend ---
+# Dependencies
+backend/node_modules/
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Python / Recommendation Service ---
+# Virtual environment
+recommendation_service/venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# --- macOS ---
+# System files
+.DS_Store
+
+# --- IDE / Editor specific ---
+.idea/
+.vscode/

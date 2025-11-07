@@ -269,29 +269,23 @@ userRouter.post("/me/profile/music", userAuth, async (req, res) => {
     }
 })
 
-userRouter.patch("/me/profile/music", userAuth, async(req, res) => {
-
-    // Blueprint
-    // userid from userAuth
-    // fetch music taste from userData using userid 
-    // get updated music taste from req.body
-    // Final operation to add new updated music taste to userData
+userRouter.patch("/me/profile/music", userAuth, async (req, res) => {
 
     try {
 
         const loggedInUserId = req.user._id;
         const userData = await User.findById(loggedInUserId).select("+musicTaste");
 
-        const {topArtists, topTracks} = req.body;
+        const { topArtists, topTracks } = req.body;
 
-        if(!topArtists || !topArtists){
-            return res.status(400).json({message : "topArtist and topTracks are missing in request"});
+        if (!Array.isArray(topArtists) || !Array.isArray(topTracks) || topArtists.length < 5 || topTracks.length < 5) {
+            return res.status(400).json({ message: "Request must include at least 5 artists and 5 tracks." });
         }
 
         const topGenresSet = new Set();
 
         topArtists.forEach((artist) => {
-            if(artist.genres && artist.genres.length > 0){
+            if (artist.genres && artist.genres.length > 0) {
                 artist.genres.forEach((genre) => topGenresSet.add(genre));
             }
         })
@@ -305,8 +299,8 @@ userRouter.patch("/me/profile/music", userAuth, async(req, res) => {
         }));
 
         const finalTopArtists = topArtists.map((artist) => ({
-            id : artist.id,
-            name : artist.name
+            id: artist.id,
+            name: artist.name
         }))
 
 
@@ -322,13 +316,51 @@ userRouter.patch("/me/profile/music", userAuth, async(req, res) => {
         publishTasteUpdate(userData._id, userData.musicTaste);
 
         res.status(200).json({
-            message : "User music taste updated sucessfully",
-            musicTaste : userData.musicTaste
+            message: "User music taste updated sucessfully",
+            musicTaste: userData.musicTaste
         });
-        
+
     } catch (error) {
         console.error("Error occured while updating music taste : ", error)
-        res.status(500).json({message : "An internal server error occured: " + error.message})
+        res.status(500).json({ message: "An internal server error occured: " + error.message })
+    }
+})
+
+userRouter.get("/:username", async (req, res) => {
+    try {
+
+        const { username } = req.params;
+        const userData = await User.findOne({ username: username });
+
+        if (!userData) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        res.status(200).json({ message: "user fetched Sucessfully", userData: userData });
+
+    } catch (error) {
+        console.error("Error in fetching user data", error);
+        res.status(500).json({ message: "An internal server error occured: " + error.message });
+
+    }
+})
+
+userRouter.get("/:username/profile/music", userAuth, async (req, res) => {
+
+    try {
+        const { username } = req.params;
+        const userData = await User.findOne({ username: username }).select("+musicTaste");
+
+        if (!userData) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        res.status(200).json({ message: "user fetched Sucessfully", userData: userData });
+
+    } catch (error) {
+        console.error("Error in fetching user data", error);
+        res.status(500).json({ message: "An internal server error occured: " + error.message });
+
     }
 })
 
