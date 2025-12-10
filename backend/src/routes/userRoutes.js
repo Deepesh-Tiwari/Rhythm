@@ -4,6 +4,7 @@ const { updateUserSchema } = require('../validation/userValidator')
 const { publishTasteUpdate } = require('../services/messageQueueService');
 const User = require("../models/user");
 const axios = require('axios');
+const socialRouter = require("./socialRoutes");
 
 
 // Credentials for spotify auth calls
@@ -27,25 +28,42 @@ userRouter.get("/me", userAuth, async (req, res) => {
 userRouter.patch("/me", userAuth, async (req, res) => {
 
     try {
-        const { error, value } = updateUserSchema.validate(req.body, { abortEarly: false });
-        if (error) {
-            const messages = error.details.map(err => err.message).join(', ');
+        const { err, value } = updateUserSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+
+        if (err) {
+            const messages = err.details.map(err => err.message).join(', ');
             throw new Error(messages);
         }
 
-        const allowedUpdates = Object.keys(value);
         const user = req.user;
+        const { username, ...otherUpdates } = value;
 
-        allowedUpdates.forEach(field => {
-            user[field] = value[field];
-        })
+        if (username && username !== user.username) {
+            const existingUser = await User.findOne({ username: username });
+            if (existingUser) {
+                // Use 409 Conflict status for "resource already exists"
+                return res.status(409).json({ message: "Username is already taken." });
+            }
+            user.username = username;
+        }
+
+        Object.assign(user, otherUpdates);
+
+        if (user.onboardingStatus === 'pending_profile') {
+            user.onboardingStatus = 'completed';
+        }
 
         await user.save();
 
         res.status(200).json({ message: "Profile updated successfully", user });
 
-    } catch (error) {
-        res.status(400).send("Some Problem with server : " + error.message);
+    } catch (err) {
+
+        if (err.code === 11000) {
+            return res.status(409).json({ message: "Username is already taken." });
+        }
+
+        res.status(500).send("Some Problem with server : " + err.message);
     }
 
 })
@@ -138,20 +156,21 @@ userRouter.post("/me/sync-spotify", userAuth, async (req, res) => {
                 topTracksMap.set(track.id, {
                     id: track.id,
                     name: track.name,
-                    artists: track.artists.map(artist => artist.name)
+                    artists: track.artists.map(artist => artist.name),
+                    image: track.album.images?.[0]?.url
                 });
             }
 
             track.artists.forEach(artist => {
                 if (!topArtistsMap.has(artist.id)) {
-                    topArtistsMap.set(artist.id, { id: artist.id, name: artist.name });
+                    topArtistsMap.set(artist.id, { id: artist.id, name: artist.name, image: track.album.images?.[0]?.url });
                 }
             });
         });
 
         getTopArtistData.forEach((artist) => {
             if (!topArtistsMap.has(artist.id)) {
-                topArtistsMap.set(artist.id, { id: artist.id, name: artist.name });
+                topArtistsMap.set(artist.id, { id: artist.id, name: artist.name, image: artist.images?.[0]?.url });
             }
             artist.genres.forEach(genre => topGenresSet.add(genre));
         });
@@ -182,6 +201,7 @@ userRouter.post("/me/sync-spotify", userAuth, async (req, res) => {
             updatedAt: new Date()
         };
 
+        userData.onboardingStatus = 'pending_profile'
         userData.save();
 
         publishTasteUpdate(userData._id, userData.musicTaste);
@@ -218,27 +238,27 @@ userRouter.post("/me/profile/music", userAuth, async (req, res) => {
         const topGeneresSet = new Set();
 
         topTracks.forEach((track) => {
+
             if (!topTracksMap.has(track.id)) {
                 const trackToAdd = {
                     id: track.id,
                     name: track.name,
-                    artists: track.artists.map(artist => artist.name)
+                    artists: track.artists.map(artist => artist.name),
+                    image: track.imageUrl
                 }
                 topTracksMap.set(track.id, trackToAdd);
 
                 track.artists.forEach((artist) => {
                     if (!topArtistsMap.has(artist.id)) {
-                        topArtistsMap.set(artist.id, { id: artist.id, name: artist.name });
+                        topArtistsMap.set(artist.id, { id: artist.id, name: artist.name, image: track.imageUrl });
                     }
                 })
             }
         })
 
         topArtists.forEach((artist) => {
-
-            if (!topArtistsMap.has(artist.id)) {
-                topArtistsMap.set(artist.id, { id: artist.id, name: artist.name });
-            }
+            //console.log(artist);
+            topArtistsMap.set(artist.id, { id: artist.id, name: artist.name, image: artist.imageUrl, genres: artist.genres });
 
             if (artist.genres && artist.genres.length > 0) {
                 artist.genres.forEach((genre) => {
@@ -252,6 +272,8 @@ userRouter.post("/me/profile/music", userAuth, async (req, res) => {
             topArtists: Array.from(topArtistsMap.values()),
             topGenres: Array.from(topGeneresSet)
         }
+
+        userData.onboardingStatus = 'pending_profile'
 
         await userData.save();
 
@@ -295,13 +317,19 @@ userRouter.patch("/me/profile/music", userAuth, async (req, res) => {
         const finalTopTracks = topTracks.map(track => ({
             id: track.id,
             name: track.name,
-            artists: track.artists.map(artist => artist.name)
+            artists: track.artists.map(artist => artist.name),
+            image: track.imageUrl
         }));
 
-        const finalTopArtists = topArtists.map((artist) => ({
-            id: artist.id,
-            name: artist.name
-        }))
+        const finalTopArtists = topArtists.map((artist) => {
+            //console.log(artist);
+            return {
+                id: artist.id,
+                name: artist.name,
+                image: artist.imageUrl,
+                genres: artist.genres
+            }
+        })
 
 
         userData.musicTaste = {
@@ -325,6 +353,9 @@ userRouter.patch("/me/profile/music", userAuth, async (req, res) => {
         res.status(500).json({ message: "An internal server error occured: " + error.message })
     }
 })
+
+// Add social router here to solve issue of 2 router same origin(/users for both user and social router)
+userRouter.use(socialRouter);
 
 userRouter.get("/:username", async (req, res) => {
     try {

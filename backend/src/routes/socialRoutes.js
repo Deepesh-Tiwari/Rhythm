@@ -5,7 +5,6 @@ const { userAuth } = require("../middlewares/authMiddleware")
 const User = require("../models/user");
 const ConnectionRequest = require("../models/connectionRequest");
 
-
 const socialRouter = express.Router();
 
 const SAFE_USER_DATA = "username displayName bio profilePic musicTaste";

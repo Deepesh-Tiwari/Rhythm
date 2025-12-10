@@ -1,0 +1,116 @@
+const Room = require("../models/room");
+const ShortUniqueId = require("short-unique-id");
+const {resolveToYoutube} = require("./youtubeService");
+
+
+const uid = new ShortUniqueId({length : 6});
+
+const createRoom = async(name, description, isPublic, hostUserId, genres) => {
+
+    let code = uid.randomUUID().toUpperCase();
+
+    const newRoom = new Room({
+        name,
+        code,
+        description,
+        isPublic,
+        genres: genres || [],
+        host: hostUserId,
+        activeMembers: [{
+            user: hostUserId,
+            role: 'host', // Creator is always Host
+            socketId: null // Socket will attach later on join
+        }]
+    });
+
+    return await newRoom.save();
+}
+
+const addSongToQueue = async (roomId, spotifyTrack, addedByUserId) => {
+    const room = await Room.findById(roomId);
+    if (!room) throw new Error("Room not found");
+
+    const youtubeId = await resolveToYoutube(
+        spotifyTrack.id, 
+        spotifyTrack.name, 
+        spotifyTrack.artist
+    );
+
+    if (!youtubeId) throw new Error("Could not find playable audio for this track.");
+
+    const queueItem = {
+        spotifyId: spotifyTrack.id,
+        name: spotifyTrack.name,
+        artist: spotifyTrack.artist, // or artists[0]
+        image: spotifyTrack.image,
+        durationMs: spotifyTrack.duration_ms || 0,
+        youtubeId: youtubeId, // <--- The Resolved ID
+        addedBy: addedByUserId,
+        votes: []
+    };
+
+    room.queue.push(queueItem);
+    await room.save();
+
+    return room; // Return updated room for Socket broadcast
+};
+
+const getRoomSyncState = async (roomId) => {
+    const room = await Room.findById(roomId).lean();
+    if (!room) return null;
+
+    const playback = room.currentPlayback;
+    
+    // Logic: How many seconds have passed since startedAt?
+    let seekPosition = 0;
+    if (playback && playback.isPlaying && playback.startedAt) {
+        const now = new Date().getTime();
+        const start = new Date(playback.startedAt).getTime();
+        seekPosition = (now - start) / 1000; // Seconds
+    }
+
+    return {
+        ...playback,
+        seekPosition: Math.max(0, seekPosition) // Ensure no negative time
+    };
+};
+
+const playNextSong = async (roomId) => {
+    const room = await Room.findById(roomId);
+    if (!room) return null;
+
+    // 1. Check Queue
+    if (room.queue.length === 0) {
+        // Queue empty? Stop playback.
+        room.currentPlayback = {
+            isPlaying: false,
+            skipVotes: [] // Reset votes
+        };
+    } else {
+        // 2. Pop next song
+        const nextSong = room.queue.shift(); // Remove first item
+
+        // 3. Update Playback State
+        room.currentPlayback = {
+            trackId: nextSong.spotifyId,
+            youtubeId: nextSong.youtubeId,
+            name: nextSong.name,
+            artist: nextSong.artist,
+            image: nextSong.image,
+            startedAt: new Date(),
+            isPlaying: true,
+            isPaused: false,
+            skipVotes: [] // Reset votes for new song
+        };
+    }
+
+    await room.save();
+    return room;
+};
+
+module.exports = {
+    createRoom,
+    addSongToQueue,
+    getRoomSyncState,
+    playNextSong
+};

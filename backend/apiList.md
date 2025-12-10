@@ -36,9 +36,9 @@
 # Music Room Management ( roomRoutes )
 - POST /rooms
 - GET /rooms
-- GET /rooms/:roomId
-- PUT /rooms/:roomId
-- DELETE /rooms/:roomId
+- GET /rooms/:code
+- PUT /rooms/:code
+- DELETE /rooms/:code
 
 # Room Membership ( roomRoutes )
 - POST /rooms/:roomId/join

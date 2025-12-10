@@ -5,6 +5,13 @@ const { default: axios } = require("axios");
 
 const musicRouter = express.Router();
 
+let discoveryCache = {
+    data: null,
+    // Set the expiry time to 0 to ensure it fetches on the first run
+    expiresAt: 0 
+};
+const CACHE_DURATION_MS = 4 * 60 * 60 * 1000; 
+
 
 musicRouter.get("/search", userAuth, async (req, res) => {
 
@@ -42,13 +49,14 @@ musicRouter.get("/search", userAuth, async (req, res) => {
                 id: item.id,
                 name: item.name,
                 imageUrl: item.album.images[0]?.url || null, // Get the first album image
-                artists: item.artists.map(artist => ({ id: artist.id, name: artist.name }))
+                artists: item.artists.map(artist => ({ id: artist.id, name: artist.name, genres: artist.genres }))
             }));
         } else if (type === 'artist' && searchResponse.data.artists) {
             formattedResults = searchResponse.data.artists.items.map(item => ({
                 id: item.id,
                 name: item.name,
-                imageUrl: item.images[0]?.url || null // Get the first artist image
+                imageUrl: item.images[0]?.url || null, // Get the first artist image
+                genres : item.genres
             }));
         }
 
@@ -65,6 +73,11 @@ musicRouter.get("/discover", userAuth, async (req, res) => {
     const TRENDING_PLAYLIST_ID = '1SRq3WsxpUl6Q6CQO3g7y9';
 
     try {
+
+        if (discoveryCache.data && Date.now() < discoveryCache.expiresAt) {
+            console.log("Serving discovery data from cache.");
+            return res.status(200).json(discoveryCache.data);
+        }
 
         const accessToken = await getSpotifyAppToken();
         const headers = { 'Authorization': `Bearer ${accessToken}` };
@@ -138,6 +151,15 @@ musicRouter.get("/discover", userAuth, async (req, res) => {
                 });
             });
         }
+
+        discoveryCache = {
+            data: {
+                trendingTracks: Array.from(trendingTracksMap.values()),
+                trendingArtists: Array.from(trendingArtistsMap.values())
+            },
+            expiresAt: Date.now() + CACHE_DURATION_MS
+        };
+        console.log("Cache updated. It will expire in 4 hours.");
 
         res.status(200).json({
             trendingTracks: Array.from(trendingTracksMap.values()),

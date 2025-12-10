@@ -12,10 +12,20 @@ const spotifySubSchema = new Schema({
 }, { _id: false });
 
 const musicTasteSchema = new Schema({
-    topTracks: [{ id: String, name: String, artists: [String], playedAt: Date }],
-    topArtists: [{ id: String, name: String }],
+    topTracks: [{ id: String, name: String, artists: [String], playedAt: Date, image: String }],
+    topArtists: [{ id: String, name: String, image : String, genres : [String] }],
     topGenres: [String],
     updatedAt: Date
+}, { _id: false });
+
+const settingsSchema = new Schema({
+    publicProfile: { type: Boolean, default: true },
+    allowInvites: { type: Boolean, default: true },
+    votePower: { type: Number, default: 1 }, // optional weighting
+    notifications: {
+        emailOnRequest: { type: Boolean, default: true },
+        emailOnMention: { type: Boolean, default: false }
+    }
 }, { _id: false });
 
 const userSchema = new Schema({
@@ -45,6 +55,13 @@ const userSchema = new Schema({
         trim: true,
         maxlength: 50
     },
+    dateOfBirth: {
+        type: Date,
+    },
+    gender: {
+        type: String,
+        enum: ['male', 'female', 'others'],
+    },
     bio: {
         type: String,
         trim: true,
@@ -53,7 +70,7 @@ const userSchema = new Schema({
     },
     profilePic: {
         type: String,
-        default: "https://example.com/default-avatar.png"
+        default: "https://i.pinimg.com/736x/9b/c2/33/9bc233d35db1d71eb9f0dbef12a3a2dd.jpg"
     },
     spotify: {
         type: spotifySubSchema,
@@ -66,9 +83,13 @@ const userSchema = new Schema({
     musicTaste: {
         type: musicTasteSchema,
         default: {},
-        select : false
     },
-
+    // onboardingStatus
+    onboardingStatus: {
+        type: String,
+        enum: ["pending_music", "pending_profile", "completed"],
+        default: 'pending_music'
+    },
     // quick social counters (denormalized for performance)
     friends: {
         type: [{
@@ -85,17 +106,18 @@ const userSchema = new Schema({
         default: 0
     },
 
-    // preferences & settings
-    settings: {
-        publicProfile: { type: Boolean, default: true },
-        allowInvites: { type: Boolean, default: true },
-        votePower: { type: Number, default: 1 }, // optional weighting
-        notifications: {
-            emailOnRequest: { type: Boolean, default: true },
-            emailOnMention: { type: Boolean, default: false }
-        }
+    // Simpler schema alternative
+    location: {
+        type: String,
+        trim: true,
+        default: ""
     },
 
+    // preferences & settings
+    settings: {
+        type: settingsSchema,
+        select: false
+    },
     roles: { type: [String], default: ['user'] },
 
     // verification / security
@@ -105,7 +127,7 @@ const userSchema = new Schema({
     resetPasswordExpires: Date,
 
     // activity
-    lastSeenAt: Date,
+    lastActiveAt: { type: Date, default: Date.now },
     roomsCreatedCount: { type: Number, default: 0 }
 }, {
     timestamps: true

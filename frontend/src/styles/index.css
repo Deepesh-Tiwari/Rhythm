@@ -1,0 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+/* 1. Import Tailwind's base styles, components, and utilities */
+@import "tailwindcss";
+
+.font-roboto {
+  font-family: 'Roboto', sans-serif;
+}
+
+@plugin "daisyui" {
+  themes: 
+    fantasy --default,  /* "cupcake" will be the default theme */
+    forest --prefersdark; /* "forest" will be used if the user's OS prefers dark mode */
+}

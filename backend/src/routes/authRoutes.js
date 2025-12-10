@@ -65,8 +65,19 @@ authRouter.post("/signup", async (req, res) => {
             passwordHash: rhashedPassword,
         });
         // then save it
+
         await user.save();
-        res.send("user created sucessfully");
+
+        const token = user.getJWT();
+
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 24 * 60 * 60 * 1000 // 1 day
+        });
+        res.status(200).json({ message: "SignUp Sucessfull", data: user });
+
     } catch (error) {
         res.status(400).send("Some Problem with server : " + error.message);
     }
@@ -97,7 +108,7 @@ authRouter.post("/login", async (req, res) => {
             sameSite: "strict",
             maxAge: 24 * 60 * 60 * 1000 // 1 day
         });
-        res.send("Login Sucessfull");
+        res.status(200).json({ message: "Login Sucessfull", data: user });
 
     } catch (error) {
         res.status(400).send("Some Problem with server : " + error.message);
@@ -110,7 +121,7 @@ authRouter.post("/logout", (req, res) => {
     res.cookie("token", null, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: "lax",
         maxAge: 0// 1 day
     });
 
@@ -158,7 +169,6 @@ authRouter.get("/spotify/callback", async (req, res) => {
 
         res.clearCookie(stateKey);
 
-
         const userSpotifyTokenRequestObj = {
             method: "post",
             url: "https://accounts.spotify.com/api/token",
@@ -167,13 +177,13 @@ authRouter.get("/spotify/callback", async (req, res) => {
                 "Authorization": "Basic " + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')
             },
             data: {
-                grant_type : "authorization_code",
-                code : code,
-                redirect_uri : REDIRECT_URI
+                grant_type: "authorization_code",
+                code: code,
+                redirect_uri: REDIRECT_URI
             }
         }
         const tokenResponse = await axios(userSpotifyTokenRequestObj);
-        const {access_token, refresh_token, scope } = tokenResponse.data;
+        const { access_token, refresh_token, scope } = tokenResponse.data;
 
 
         const userSpotifyProfileRequestObj = {
@@ -192,17 +202,17 @@ authRouter.get("/spotify/callback", async (req, res) => {
         user = await User.findOne({ "spotify.spotifyId": spotifyProfile.id });
 
         // If user not found try finding it by email
-        if(!user && spotifyProfile.email){
+        if (!user && spotifyProfile.email) {
             user = await User.findOne({ "email": spotifyProfile.email });
         }
-        
+
         // case I: user already exists update existing data
-        if(user){
+        if (user) {
 
             console.log(`Existing user found: ${user.username}. Linking/updating Spotify data.`);
 
             user.displayName = user.displayName || spotifyProfile.display_name;
-            user.profilePic = user.profilePic === "https://example.com/default-avatar.png" ? (spotifyProfile.images?.[0]?.url || user.profilePic) : user.profilePic;
+            user.profilePic = user.profilePic === "https://i.pinimg.com/736x/9b/c2/33/9bc233d35db1d71eb9f0dbef12a3a2dd.jpg" ? (spotifyProfile.images?.[0]?.url || user.profilePic) : user.profilePic;
 
             // Always update connection status and Spotify-specific data
             user.isSpotifyConnected = true;
@@ -220,8 +230,8 @@ authRouter.get("/spotify/callback", async (req, res) => {
             };
         }
         // case 2 : new user registering through spotify
-        else{
-            
+        else {
+
             console.log("New user detected. Creating account from Spotify profile.");
             const newUsername = await generateUniqueUsername(spotifyProfile.display_name);
 
@@ -229,11 +239,11 @@ authRouter.get("/spotify/callback", async (req, res) => {
                 username: newUsername,
                 email: spotifyProfile.email, // This can be null if user denies permission
                 displayName: spotifyProfile.display_name,
-                profilePic: spotifyProfile.images?.[0]?.url || "https://example.com/default-avatar.png",
+                profilePic: spotifyProfile.images?.[0]?.url,
                 isSpotifyConnected: true,
                 emailVerified: !!spotifyProfile.email, // Mark as verified if Spotify provides an email
                 emailVerifiedAt: spotifyProfile.email ? new Date() : null,
-                lastSeenAt: new Date(),
+                onboardingStatus: "pending_profile",
                 spotify: {
                     spotifyId: spotifyProfile.id,
                     accessToken: access_token,
@@ -255,11 +265,12 @@ authRouter.get("/spotify/callback", async (req, res) => {
         res.cookie("token", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+            sameSite: "lax",
             maxAge: 24 * 60 * 60 * 1000 // 1 day
         });
-        res.send("Login Sucessfull");
-        
+        //res.status(200).json({message : "Login Sucessfull", data : user});
+        res.redirect(`http://127.0.0.1:5173/spotify-success`);
+
     } catch (error) {
         res.status(400).send("Some Problem with server : " + error.message);
     }
@@ -269,13 +280,13 @@ authRouter.post("/reset-password", async (req, res) => {
 
     try {
 
-        const {email} = req.body;
+        const { email } = req.body;
         if (!email) {
             return res.status(400).json({ message: "Email is required." });
         }
 
-        const user = await User.findOne({email : email});
-        if(!user){
+        const user = await User.findOne({ email: email });
+        if (!user) {
             throw new Error("Password reset Email sent to user Registed email")
         }
 
@@ -306,17 +317,17 @@ authRouter.post("/reset-password", async (req, res) => {
         //     text: emailText,
         // });
 
-        res.status(200).json({message: "Password reset Email sent to user Registed email"})
-        
+        res.status(200).json({ message: "Password reset Email sent to user Registed email" })
+
     } catch (error) {
         res.status(400).send("Some Problem with server : " + error.message);
     }
 })
 
-authRouter.post("/reset-password/verify", async(req, res) => {
+authRouter.post("/reset-password/verify", async (req, res) => {
     try {
 
-        const {token, newPassword} = req.body;
+        const { token, newPassword } = req.body;
         if (!token || !newPassword) {
             return res.status(400).json({ message: "Token and new password are required." });
         }
