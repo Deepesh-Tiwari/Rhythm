@@ -306,7 +306,7 @@ roomRouter.post('/:code/invite', userAuth, async (req, res) => {
         const room = await Room.findOne({ code, isActive: true });
         if (!room) return res.status(404).json({ message: "Room not found." });
 
-        const baseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+        const baseUrl = process.env.CLIENT_URL || "http://localhost:5173";
         const inviteLink = `${baseUrl}/room/${code}`;
 
         // 2. (Optional) Handle Direct Invite

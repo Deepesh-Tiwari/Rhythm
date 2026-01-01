@@ -13,10 +13,11 @@ const authRouter = express.Router();
 
 
 // Credentials for spotify auth calls
-const CLIENT_ID = "9671d752dde54b609fae0ad8b97ea82a";
-const CLIENT_SECRET = "aec9ea1c02b04bad8be18880484ced50";
-const REDIRECT_URI = "http://127.0.0.1:3000/auth/spotify/callback";
+const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
+const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
+const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI;
 const stateKey = "spotify_auth_state";
+const CLIENT_URL = process.env.CLIENT_URL || 'http://127.0.0.1:5173';
 
 const generateRandomString = (length) => {
     return crypto
@@ -269,7 +270,7 @@ authRouter.get("/spotify/callback", async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000 // 1 day
         });
         //res.status(200).json({message : "Login Sucessfull", data : user});
-        res.redirect(`http://127.0.0.1:5173/spotify-success`);
+        res.redirect(`${CLIENT_URL}/spotify-success`);
 
     } catch (error) {
         res.status(400).send("Some Problem with server : " + error.message);
@@ -307,15 +308,28 @@ authRouter.post("/reset-password", async (req, res) => {
 
 
 
-        const resetURL = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+        const resetURL = `${CLIENT_URL}/reset-password?token=${token}`;;
         const emailText = `You are receiving this email because you (or someone else) have requested the reset of a password for your Rhythm account.\n\nPlease click on the following link, or paste it into your browser to complete the process:\n\n${resetURL}\n\nThis link will expire in 10 minutes.\n\nIf you did not request this, please ignore this email and your password will remain unchanged.`;
 
-        // configure nodemailer for later
-        // await sendEmail({
-        //     to: user.email,
-        //     subject: 'Rhythm - Password Reset Request',
-        //     text: emailText,
-        // });
+        try {
+            await sendEmail({
+                to: user.email,
+                subject: 'Rhythm - Password Reset Request',
+                text: emailText,
+                html: `<p>${emailText.replace(/\n/g, '<br>')}</p>` // Simple text-to-html conversion
+            });
+
+            res.status(200).json({ message: "If an account exists with that email, a reset link has been sent." });
+
+        } catch (emailError) {
+            // If email fails, rollback user changes so they can try again
+            user.resetPasswordToken = undefined;
+            user.resetPasswordExpires = undefined;
+            await user.save();
+
+            console.error("Email send failed:", emailError);
+            return res.status(500).json({ message: "Email could not be sent. Please try again later." });
+        }
 
         res.status(200).json({ message: "Password reset Email sent to user Registed email" })
 

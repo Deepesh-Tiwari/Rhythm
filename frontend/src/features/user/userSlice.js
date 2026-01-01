@@ -16,7 +16,13 @@ export const userSlice = createSlice({
         addUser: (state, action) => {
             state.user = action.payload;
             state.isAuthenticated = !!action.payload;
-        }
+        },
+
+        updateMusicTaste: (state, action) => {
+            if (state.user) {
+                state.user.musicTaste = action.payload;
+            }
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -56,7 +62,7 @@ export const userSlice = createSlice({
     }
 })
 
-export const { addUser } = userSlice.actions;
+export const { addUser, updateMusicTaste } = userSlice.actions;
 
 export default userSlice.reducer;
 

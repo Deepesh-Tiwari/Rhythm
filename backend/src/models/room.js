@@ -42,7 +42,10 @@ const roomSchema = new Schema({
         
         // Sync Logic
         isPlaying: { type: Boolean, default: false },
-        startedAt: Date, // Timestamp when the song STARTED (for seek calculation)
+        lastUpdated: { type: Date, default: Date.now },
+        position: { type: Number, default: 0 }, // Timestamp when the song STARTED (for seek calculation)
+
+        skipVotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
     },
 
     // THE QUEUE (FIFO)

@@ -2,15 +2,37 @@ const express = require("express");
 const { userAuth } = require("../middlewares/authMiddleware");
 const getSpotifyAppToken = require("../services/spotifyService");
 const { default: axios } = require("axios");
+const ytdl = require('@distube/ytdl-core');
+const fs = require('fs');
+const path = require('path');
+const { getAudioStream } = require("../services/ytDlpService");
+const { spawn } = require("child_process");
+const { getCachedAudio }= require('../services/fileCacheService')
 
 const musicRouter = express.Router();
+
+const cookiesPath = path.join(__dirname, '../cookies.json');
+let agent = null;
+
+
+try {
+    if (fs.existsSync(cookiesPath)) {
+        const cookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf8'));
+        agent = ytdl.createAgent(cookies);
+        console.log("🍪 YouTube Cookies Loaded Successfully!");
+    } else {
+        console.warn("⚠️ src/cookies.json not found. Restricted videos might fail.");
+    }
+} catch (err) {
+    console.error("❌ Failed to parse cookies.json:", err.message);
+}
 
 let discoveryCache = {
     data: null,
     // Set the expiry time to 0 to ensure it fetches on the first run
-    expiresAt: 0 
+    expiresAt: 0
 };
-const CACHE_DURATION_MS = 4 * 60 * 60 * 1000; 
+const CACHE_DURATION_MS = 4 * 60 * 60 * 1000;
 
 
 musicRouter.get("/search", userAuth, async (req, res) => {
@@ -49,6 +71,7 @@ musicRouter.get("/search", userAuth, async (req, res) => {
                 id: item.id,
                 name: item.name,
                 imageUrl: item.album.images[0]?.url || null, // Get the first album image
+                duration: item.duration_ms,
                 artists: item.artists.map(artist => ({ id: artist.id, name: artist.name, genres: artist.genres }))
             }));
         } else if (type === 'artist' && searchResponse.data.artists) {
@@ -56,7 +79,7 @@ musicRouter.get("/search", userAuth, async (req, res) => {
                 id: item.id,
                 name: item.name,
                 imageUrl: item.images[0]?.url || null, // Get the first artist image
-                genres : item.genres
+                genres: item.genres
             }));
         }
 
@@ -146,7 +169,7 @@ musicRouter.get("/discover", userAuth, async (req, res) => {
                         const artistData = trendingArtistsMap.get(artist.id);
 
                         artistData.imageUrl = artist.images[0]?.url || null;
-                        artistData.genres = artist.genres || []; 
+                        artistData.genres = artist.genres || [];
                     }
                 });
             });
@@ -170,6 +193,30 @@ musicRouter.get("/discover", userAuth, async (req, res) => {
         console.error("Error in getDiscoveryList:", error.response ? error.response.data : error.message);
         res.status(500).json({ message: "An error occurred while fetching discovery data." });
     }
+});
+
+musicRouter.get("/stream/:videoId", async (req, res) => {
+  const { videoId } = req.params;
+
+  try {
+    console.log(`🎧 Streaming: ${videoId}`);
+
+    const audioStream = await getCachedAudio(videoId);
+    const filePath = path.join(__dirname, "../../music_cache", `${videoId}.mp3`);
+    const stat = await fs.promises.stat(filePath);
+
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Content-Length", stat.size);
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+
+    audioStream.pipe(res);
+
+    req.on("close", () => audioStream.destroy());
+  } catch (err) {
+    console.error("🔥 Stream error:", err.message);
+    res.status(500).send("Stream unavailable");
+  }
 });
 
 module.exports = musicRouter;

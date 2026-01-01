@@ -1,19 +1,80 @@
 const Room = require("../models/room");
-const {addSongToQueue, playNextSong} = require("../services/roomService");
+const { addSongToQueue, playNextSong } = require("../services/roomService");
+const Message = require("../models/message")
 
 const playbackHandler = (io, socket) => {
 
+    socket.on('get_server_time', (callback) => {
+        if (typeof callback === 'function') {
+            callback(Date.now());
+        }
+    })
+
+    socket.on('sync_event', (data) => {
+        const { roomId } = data;
+
+        socket.to(roomId).emit('sync_event', data);
+    })
+
     // Add a song to queue
-    socket.on('queue_add', async( roomId, spotifyTrack, userId) => {
+    socket.on('queue_add', async ({ roomId, spotifyTrack, userId }) => {
 
         try {
 
-            const updatedRoom = await addSongToQueue(roomId, spotifyTrack, userId);
+            console.log(`➕ Adding to queue: ${roomId}`);
+
+            const room = await addSongToQueue(roomId, spotifyTrack, userId);
+
+            const isIdle = !room.currentPlayback || !room.currentPlayback.youtubeId;
+
+            if (isIdle) {
+                console.log(`🚀 Queue was empty. Auto-playing first song.`);
+
+                // A. Move song from Queue to CurrentPlayback
+                room = await playNextSong(roomId);
+
+                if (room && room.currentPlayback && room.currentPlayback.youtubeId) {
+                    const serverTime = Date.now();
+                    const nextTrack = room.currentPlayback;
+
+                    // B. Set Anchor Point (Start Playing)
+                    await Room.findByIdAndUpdate(roomId, {
+                        'currentPlayback.isPlaying': true,
+                        'currentPlayback.isPaused': false, // Ensure it's not paused
+                        'currentPlayback.lastUpdated': serverTime,
+                        'currentPlayback.position': 0
+                    });
+
+                    // C. Broadcast PLAY immediately
+                    io.to(roomId).emit('playback_sync', {
+                        action: 'play',
+                        youtubeId: nextTrack.youtubeId,
+                        seekTime: 0,
+                        serverTime,
+                        name: nextTrack.name,
+                        artist: nextTrack.artist,
+                        image: nextTrack.image
+                    });
+
+                    try {
+                    const systemMsg = new Message({
+                        room: room._id,
+                        sender: null,
+                        content: `🎵 Now Playing: ${nextTrack.name} - ${nextTrack.artist}`,
+                        type: 'system'
+                    });
+                    await systemMsg.save();
+                    io.to(room._id.toString()).emit('new_message', systemMsg);
+                } catch (msgErr) {
+                    console.error("System Msg Error:", msgErr);
+                }
+                }
+            }
 
             io.to(roomId).emit('queue_update', {
-                queue: updatedRoom.queue
-            })
-            
+                queue: room.queue
+            });
+
         } catch (error) {
             console.error("Socket Queue Error:", err);
             socket.emit('error', { message: "Failed to add song" });
@@ -23,53 +84,104 @@ const playbackHandler = (io, socket) => {
 
     // PLAY (Host Only)
     socket.on('player_play', async ({ roomId, youtubeId, seekTime }) => {
-        console.log(`▶️ Play ${youtubeId} in ${roomId}`);
-        
-        // Update DB State
-        await Room.findByIdAndUpdate(roomId, {
-            'currentPlayback.youtubeId': youtubeId,
-            'currentPlayback.isPlaying': true,
-            'currentPlayback.isPaused': false,
-            'currentPlayback.startedAt': new Date(Date.now() - (seekTime * 1000 || 0))
-        });
+        try {
+            const serverTime = Date.now();
+            console.log(`▶️ Play ${roomId} | Anchor: ${seekTime}s`);
 
-        // Broadcast Sync Command
-        io.to(roomId).emit('playback_sync', {
-            action: 'play',
-            youtubeId: youtubeId,
-            seekTime: seekTime || 0
-        });
+            // Update DB State
+            await Room.findByIdAndUpdate(roomId, {
+                'currentPlayback.isPlaying': true,
+                'currentPlayback.youtubeId': youtubeId,
+                'currentPlayback.lastUpdated': serverTime, // T0
+                'currentPlayback.position': seekTime || 0  // P0
+            });
+
+            // Broadcast Sync Command
+            io.to(roomId).emit('playback_sync', {
+                action: 'play',
+                youtubeId,
+                seekTime,
+                serverTime // Helping clients sync
+            });
+
+        } catch (err) {
+            console.error("Play Error:", err);
+        }
     });
 
     // PAUSE (Host Only)
-    socket.on('player_pause', async ({ roomId }) => {
-        console.log(`⏸️ Pause ${roomId}`);
+    socket.on('player_pause', async ({ roomId , seekTime}) => {
+        try {
+            console.log(`⏸️ Pause ${roomId} | Frozen at: ${seekTime}s`);
 
-        await Room.findByIdAndUpdate(roomId, {
-            'currentPlayback.isPaused': true,
-            'currentPlayback.isPlaying': false
-        });
+            await Room.findByIdAndUpdate(roomId, {
+                'currentPlayback.isPlaying': false,
+                'currentPlayback.lastUpdated': Date.now(),
+                'currentPlayback.position': seekTime || 0
+            });
 
-        io.to(roomId).emit('playback_sync', { action: 'pause' });
+            io.to(roomId).emit('playback_sync', { 
+                action: 'pause', 
+                seekTime 
+            });
+        } catch (err) {
+            console.error("Pause Error:", err);
+        }
     });
 
-    // TRACK ENDED (Auto-DJ)
+    // 4. TRACK ENDED / START QUEUE (Auto-DJ)
     socket.on('track_ended', async ({ roomId }) => {
-        console.log(`🏁 Track Ended in ${roomId}`);
-        const updatedRoom = await playNextSong(roomId);
+        try {
+            console.log(`🏁 Track Ended signal received for Room ${roomId}`);
 
-        if (updatedRoom.currentPlayback.youtubeId) {
-            // Play next song
-            io.to(roomId).emit('playback_sync', {
-                action: 'play',
-                youtubeId: updatedRoom.currentPlayback.youtubeId,
-                seekTime: 0
-            });
-            // Update Queue UI
-            io.to(roomId).emit('queue_update', { queue: updatedRoom.queue });
-        } else {
-            // Stop if empty
-            io.to(roomId).emit('playback_sync', { action: 'stop' });
+            const updatedRoom = await playNextSong(roomId);
+
+            // FIX: Check if room exists and has playback
+            if (updatedRoom && updatedRoom.currentPlayback && updatedRoom.currentPlayback.youtubeId) {
+                const nextTrack = updatedRoom.currentPlayback;
+                const serverTime = Date.now(); 
+                console.log(`🚀 Playing Next: ${nextTrack.name}`);
+
+                await Room.findByIdAndUpdate(roomId, {
+                    'currentPlayback.isPlaying': true,
+                    'currentPlayback.lastUpdated': serverTime,
+                    'currentPlayback.position': 0,
+                    'currentPlayback.skipVotes': [] 
+                });
+
+                // 1. Play new song
+                io.to(roomId).emit('playback_sync', {
+                    action: 'play',
+                    youtubeId: nextTrack.youtubeId,
+                    seekTime: 0,
+                    serverTime,
+                    name : nextTrack.name,
+                    artist : nextTrack.artist,
+                    image : nextTrack.image
+                });
+
+                try {
+                    const systemMsg = new Message({
+                        room: roomId,
+                        sender: null,
+                        content: `🎵 Now Playing: ${nextTrack.name} - ${nextTrack.artist}`,
+                        type: 'system'
+                    });
+                    await systemMsg.save();
+                    io.to(roomId).emit('new_message', systemMsg);
+                } catch (msgErr) {
+                    console.error("System Msg Error:", msgErr);
+                }
+
+                // 2. Update Queue list
+                io.to(roomId).emit('queue_update', { queue: updatedRoom.queue });
+            } else {
+                console.log("🛑 Queue empty. Stopping.");
+                io.to(roomId).emit('playback_sync', { action: 'stop' });
+            }
+        } catch (error) {
+            // FIX: Added Error Handling here
+            console.error("❌ Track End Error:", error.message);
         }
     });
 }

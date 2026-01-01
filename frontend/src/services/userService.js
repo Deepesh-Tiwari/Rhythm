@@ -26,3 +26,14 @@ export const updateUserProfile = async (userProfileData) => {
         throw error;
     }
 }
+
+export const syncSpotifyyProfile = async (userProfileData) => {
+    try {
+        
+        const response = await apiClient.post("/users/me/sync-spotify", userProfileData);
+        return response.data;
+    } catch (error) {
+        console.error("API error while updating user profile", error);
+        throw error;
+    }
+}

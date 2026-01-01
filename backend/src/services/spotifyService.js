@@ -1,8 +1,8 @@
 const axios = require('axios')
 
 // Credentials for spotify auth calls
-const CLIENT_ID = "9671d752dde54b609fae0ad8b97ea82a";
-const CLIENT_SECRET = "aec9ea1c02b04bad8be18880484ced50";
+const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
+const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
 let tokenCache = {
     access_token: null,

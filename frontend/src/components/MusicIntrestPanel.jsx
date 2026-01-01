@@ -1,38 +1,82 @@
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router';
-import { MusicalNoteIcon, UserIcon, PlayCircleIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import { MusicalNoteIcon, UserIcon, PlayCircleIcon, PencilSquareIcon, ArrowPathIcon  } from '@heroicons/react/24/outline';
+import { useState } from 'react';
+import { syncSpotifyyProfile } from '../services/userService';
+import { updateMusicTaste } from '../features/user/userSlice';
+
 
 const MusicInterestPanel = () => {
     // In the future, you would get the user's music taste from the Redux store here.
 
     const { user } = useSelector(state => state.user);
-
     const navigate = useNavigate();
 
     const musicTaste = user?.musicTaste;
     const isSpotifyConnected = user?.isSpotifyConnected;
+    const dispatch = useDispatch();
+
+    const [isSyncing, setIsSyncing] = useState(false);
 
     const topGenres = musicTaste?.topGenres?.slice(0, 8) || [];
     const topArtists = musicTaste?.topArtists?.slice(0, 5) || [];
     const topTracks = musicTaste?.topTracks?.slice(0, 5) || [];
+
+    const handleSync = async () => {
+        if (isSyncing) return;
+        setIsSyncing(true);
+
+        try {
+            // 1. Call your backend route
+            const response = await syncSpotifyyProfile();
+            
+            if (response && response.musicTaste) {
+                console.log("✅ Sync Success! Updating Redux...");
+                dispatch(updateMusicTaste(response.musicTaste));
+            }
+            
+        } catch (err) {
+            console.error("Spotify Sync Failed:", err);
+            // Optional: alert("Failed to sync Spotify data");
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     return (
         <div className="card bg-base-200 shadow-lg h-full hidden lg:block overflow-hidden">
             <div className="card-body p-6">
 
                 {/* Header */}
-                <h2 className="card-title text-xl mb-2 flex items-center gap-2">
-                    <MusicalNoteIcon className="h-6 w-6 text-primary" />
-                    <span className='pr-30'>Music Taste</span>
+                <div className="flex items-center justify-between mb-2">
+                    <h2 className="card-title text-xl flex items-center gap-2">
+                        <MusicalNoteIcon className="h-6 w-6 text-primary" />
+                        <span>Music Taste</span>
+                    </h2>
 
-                    <button
-                    onClick={() => navigate('/music/edit')}
-                    className="btn btn-ghost btn-sm btn-circle tooltip tooltip-left"
-                    data-tip="Edit Favorites"
-                >
-                    <PencilSquareIcon className="h-5 w-5 text-base-content/50 hover:text-primary transition-colors" />
-                </button>
-                </h2>
+                    <div className="flex gap-1">
+                        {/* ✅ SYNC BUTTON (Only if connected) */}
+                        {isSpotifyConnected && (
+                            <button
+                                onClick={handleSync}
+                                disabled={isSyncing}
+                                className={`btn btn-ghost btn-sm btn-circle tooltip tooltip-bottom ${isSyncing ? 'animate-spin text-primary' : ''}`}
+                                data-tip="Sync from Spotify"
+                            >
+                                <ArrowPathIcon className="h-5 w-5 text-base-content/50 hover:text-primary transition-colors" />
+                            </button>
+                        )}
+
+                        {/* Edit Button */}
+                        <button
+                            onClick={() => navigate('/music/edit')}
+                            className="btn btn-ghost btn-sm btn-circle tooltip tooltip-bottom"
+                            data-tip="Edit Favorites"
+                        >
+                            <PencilSquareIcon className="h-5 w-5 text-base-content/50 hover:text-primary transition-colors" />
+                        </button>
+                    </div>
+                </div>
 
 
                 {/* Content Logic */}

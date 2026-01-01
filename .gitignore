@@ -16,6 +16,9 @@ yarn-error.log*
 # --- Python / Recommendation Service ---
 # Virtual environment
 recommendation_service/venv/
+**/venv/
+**/.venv/
+**/env/
 
 # Python cache
 __pycache__/
@@ -28,3 +31,5 @@ __pycache__/
 # --- IDE / Editor specific ---
 .idea/
 .vscode/
+
+backend/src/cookies.json

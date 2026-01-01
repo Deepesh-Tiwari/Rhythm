@@ -8,10 +8,9 @@ const socialRouter = require("./socialRoutes");
 
 
 // Credentials for spotify auth calls
-const CLIENT_ID = "9671d752dde54b609fae0ad8b97ea82a";
-const CLIENT_SECRET = "aec9ea1c02b04bad8be18880484ced50";
-const REDIRECT_URI = "http://127.0.0.1:3000/auth/spotify/callback";
-const stateKey = "spotify_auth_state";
+const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
+const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
+
 
 const userRouter = express.Router();
 
@@ -170,7 +169,7 @@ userRouter.post("/me/sync-spotify", userAuth, async (req, res) => {
 
         getTopArtistData.forEach((artist) => {
             if (!topArtistsMap.has(artist.id)) {
-                topArtistsMap.set(artist.id, { id: artist.id, name: artist.name, image: artist.images?.[0]?.url });
+                topArtistsMap.set(artist.id, { id: artist.id, name: artist.name, image: artist.images?.[0]?.url, genres: artist.genres || [] });
             }
             artist.genres.forEach(genre => topGenresSet.add(genre));
         });
@@ -189,7 +188,7 @@ userRouter.post("/me/sync-spotify", userAuth, async (req, res) => {
         // Process Followed Artists
         getUserFollowedArtistsData.forEach((artist) => {
             if (!topArtistsMap.has(artist.id)) {
-                topArtistsMap.set(artist.id, { id: artist.id, name: artist.name });
+                topArtistsMap.set(artist.id, { id: artist.id, name: artist.name,image: artist.images?.[0]?.url, genres: artist.genres || []  });
             }
             artist.genres.forEach(genre => topGenresSet.add(genre));
         });

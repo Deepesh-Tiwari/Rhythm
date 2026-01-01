@@ -8,6 +8,7 @@ const ConnectionRequest = require("../models/connectionRequest");
 const socialRouter = express.Router();
 
 const SAFE_USER_DATA = "username displayName bio profilePic musicTaste";
+const SERVICE_URL = process.env.RECOMMENDATION_SERVICE_URL || 'http://localhost:8000';
 
 socialRouter.post("/requests", userAuth, async (req, res) => {
 
@@ -165,9 +166,9 @@ socialRouter.get("/recommendations", userAuth, async ( req, res) => {
         loggedInUserId = req.user._id;
         const limit = parseInt(req.query.limit, 10) || 20;
 
-        const recommendationServiceUrl = `http://localhost:8000/recommend/${loggedInUserId}?limit=${limit * 2}`;
 
         let recommendedUserIds = [];
+        const recommendationServiceUrl = `${SERVICE_URL}/recommend/${loggedInUserId}?limit=${limit * 2}`;
 
         try {
             const response = await axios.get(recommendationServiceUrl);

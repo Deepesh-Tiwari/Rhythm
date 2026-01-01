@@ -1,6 +1,14 @@
+const roomHandler = require('./roomHandler');
+const playbackHandler = require('./playbackHandler');
+const chatHandler = require("./chatHandler")
+
 const socketInit = (io) => {
     io.on('connection', (socket) => {
         console.log(`🔌 Socket Connected: ${socket.id}`);
+
+        roomHandler(io, socket);
+        playbackHandler(io, socket);
+        chatHandler(io, socket);
 
         // Simple Test Event
         socket.on('ping', () => {

@@ -30,10 +30,17 @@ const addSongToQueue = async (roomId, spotifyTrack, addedByUserId) => {
     const room = await Room.findById(roomId);
     if (!room) throw new Error("Room not found");
 
+    // console.log("📥 Incoming Track Data:", JSON.stringify(spotifyTrack, null, 2));
+
+    const artistName = spotifyTrack.artist || (spotifyTrack.artists && spotifyTrack.artists[0]?.name) || "Unknown Artist";
+    const trackImage = spotifyTrack.image || spotifyTrack.imageUrl; // Fixes the "Image not visible" issue
+    const durationMs = spotifyTrack.durationMs || spotifyTrack.duration || 0; // Fixes the "undefinedms" issue
+
     const youtubeId = await resolveToYoutube(
         spotifyTrack.id, 
         spotifyTrack.name, 
-        spotifyTrack.artist
+        artistName,
+        durationMs
     );
 
     if (!youtubeId) throw new Error("Could not find playable audio for this track.");
@@ -41,9 +48,9 @@ const addSongToQueue = async (roomId, spotifyTrack, addedByUserId) => {
     const queueItem = {
         spotifyId: spotifyTrack.id,
         name: spotifyTrack.name,
-        artist: spotifyTrack.artist, // or artists[0]
-        image: spotifyTrack.image,
-        durationMs: spotifyTrack.duration_ms || 0,
+        artist: artistName, // or artists[0]
+        image: trackImage,
+        durationMs: durationMs,
         youtubeId: youtubeId, // <--- The Resolved ID
         addedBy: addedByUserId,
         votes: []
@@ -62,11 +69,12 @@ const getRoomSyncState = async (roomId) => {
     const playback = room.currentPlayback;
     
     // Logic: How many seconds have passed since startedAt?
-    let seekPosition = 0;
-    if (playback && playback.isPlaying && playback.startedAt) {
-        const now = new Date().getTime();
-        const start = new Date(playback.startedAt).getTime();
-        seekPosition = (now - start) / 1000; // Seconds
+    let seekPosition = playback.position || 0;
+    if (playback && playback.isPlaying && playback.lastUpdated) {
+        const now = Date.now();
+        const lastUpdate = new Date(playback.lastUpdated).getTime();
+        const elapsed = (now - lastUpdate) / 1000;
+        seekPosition += elapsed;
     }
 
     return {
@@ -84,7 +92,10 @@ const playNextSong = async (roomId) => {
         // Queue empty? Stop playback.
         room.currentPlayback = {
             isPlaying: false,
-            skipVotes: [] // Reset votes
+            skipVotes: [], // Reset votes
+
+            position: 0,
+            lastUpdated: Date.now()
         };
     } else {
         // 2. Pop next song
@@ -97,9 +108,10 @@ const playNextSong = async (roomId) => {
             name: nextSong.name,
             artist: nextSong.artist,
             image: nextSong.image,
-            startedAt: new Date(),
             isPlaying: true,
             isPaused: false,
+            lastUpdated: Date.now(), // T0
+            position: 0,
             skipVotes: [] // Reset votes for new song
         };
     }

@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 const express = require("express");
 const cors = require('cors');
 const http = require("http");
@@ -6,6 +8,8 @@ const cookieParser = require("cookie-parser");
 const { connectToRabbitMQ } = require('./services/messageQueueService');
 const { Server } = require("socket.io");
 const socketInit = require('./sockets/index');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 
 //Import routes
@@ -16,23 +20,45 @@ const musicRoutes = require("./routes/musicRoutes")
 const roomRoutes = require("./routes/roomRoutes");
 const playbackRoutes = require("./routes/playbackRoutes");
 
+const { cleanupCache } = require("./services/cleanupService");
+
 
 const app = express();
 const server = http.createServer(app);
 
+const PORT = process.env.PORT || 3000;
+const CLIENT_URL = process.env.CLIENT_URL || "http://127.0.0.1:5173";
+
+// CORS Configuration
+// Allow both the specific client URL and localhost for easier dev testing
+const allowedOrigins = [CLIENT_URL, "http://localhost:5173", "http://127.0.0.1:5173"];
+
 const io = new Server(server, {
     cors: {
-        origin: ['http://127.0.0.1:5173', 'http://localhost:5173'], // Match your frontend ports
+        origin : allowedOrigins,
         credentials: true,
         methods: ["GET", "POST"]
     }
 });
-
+app.set('io', io);
 socketInit(io);
 
 
+app.use(helmet());
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    max: 150, 
+    standardHeaders: true, 
+    legacyHeaders: false,
+    message: { message: "Too many requests from this IP, please try again later." }
+});
+app.use('/auth', limiter); // Apply strict limit to Auth
+app.use('/users', limiter);
+
+
 app.use(cors({
-    origin: ['http://127.0.0.1:5173', 'http://localhost:5173'],// Use your Vite dev server's port
+    origin: allowedOrigins,
     credentials: true
 }));
 app.use(express.json());
@@ -45,11 +71,12 @@ app.use("/music", musicRoutes);
 app.use("/rooms", roomRoutes);
 app.use("/rooms/:code", playbackRoutes);
 
+cleanupCache();
 
 connectDB()
     .then(() => {
         console.log("✅ Database Connection established .....");
-        server.listen(3000, '127.0.0.1', () => {
+        server.listen(PORT, '127.0.0.1', () => {
             connectToRabbitMQ();
             console.log("✅ Server (Express + Socket.io) is listening on port 3000 .....");
         });

@@ -16,6 +16,7 @@ import UserProfilePage from './pages/UserProfilePage'
 import UserProfileUpdatePage from './pages/UserProfileUpdatePage'
 import ConnectionsPage from './pages/ConnectionsPage'
 import MusicTasteEditPage from './pages/MusicTasteEditPage'
+import RoomPage from './pages/RoomPage'
 
 // importing thunk functions
 import { checkAuthStatus } from './features/user/userThunks'
@@ -90,6 +91,7 @@ function App() {
           <Route path='/profile/me' element={<UserProfilePage />} />
           <Route path='/profile/edit' element={<UserProfileUpdatePage />} />
           <Route path='/music/edit' element={<MusicTasteEditPage />} />
+          <Route path='/rooms/:code' element={<RoomPage />} />
 
 
           <Route path='/connections' element={<ConnectionsPage />} />
