@@ -9,6 +9,7 @@ const socialRouter = express.Router();
 
 const SAFE_USER_DATA = "username displayName bio profilePic musicTaste";
 const SERVICE_URL = process.env.RECOMMENDATION_SERVICE_URL || 'http://localhost:8000';
+//console.log(SERVICE_URL);
 
 socialRouter.post("/requests", userAuth, async (req, res) => {
 
@@ -173,6 +174,7 @@ socialRouter.get("/recommendations", userAuth, async ( req, res) => {
         try {
             const response = await axios.get(recommendationServiceUrl);
             recommendedUserIds = response.data.map(rec => rec.userId);
+            // console.log(response)
         } catch (error) {
             console.error("Could not connect to recommendation service:", error.message);
             return res.status(503).json({ message: "Recommendation service is temporarily unavailable." });
