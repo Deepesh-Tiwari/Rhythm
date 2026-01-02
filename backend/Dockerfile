@@ -1,7 +1,7 @@
 # backend/Dockerfile
 
 # 1. Use Node.js Alpine (Lightweight)
-FROM node:18-alpine
+FROM node:20-alpine
 
 # 2. Install System Dependencies (FFmpeg, Python, Curl for yt-dlp)
 RUN apk add --no-cache python3 py3-pip ffmpeg curl
