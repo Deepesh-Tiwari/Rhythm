@@ -76,7 +76,7 @@ cleanupCache();
 connectDB()
     .then(() => {
         console.log("✅ Database Connection established .....");
-        server.listen(PORT, '127.0.0.1', () => {
+        server.listen(PORT, () => {
             connectToRabbitMQ();
             console.log("✅ Server (Express + Socket.io) is listening on port 3000 .....");
         });
