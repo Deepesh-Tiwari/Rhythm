@@ -27,4 +27,4 @@ RUN mkdir -p music_cache && chmod 777 music_cache
 EXPOSE 3000
 
 # 9. Start Server
-CMD ["node", "server.js"]
+CMD ["node", "src/app.js"]
