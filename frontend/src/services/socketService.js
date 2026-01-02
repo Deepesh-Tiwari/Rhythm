@@ -1,11 +1,12 @@
 import { io, Socket } from 'socket.io-client'
-import { API_URL } from '../config';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
 
 let socket;
 
 export const connectSocket = () => {
     if(!socket){
-        socket = io(API_URL, {
+        socket = io(API_BASE_URL, {
             withCredentials: true,
             autoConnect: false
         });

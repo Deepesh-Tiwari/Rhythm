@@ -2,6 +2,7 @@
 import { voteSkipThunk } from "../features/room/roomThunks";
 import { updatePlayback, updateMembers, updateHost } from "../features/room/roomSlice";
 import { getSocket } from "../services/socketService";
+import { getStreamUrl } from "../services/roomService";
 
 import React, { useState, useRef, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
@@ -50,7 +51,6 @@ const RoomPlayer = () => {
     const coverImage = currentPlayback?.image || NO_TRACK_IMG;
     const retryCount = useRef(0);
 
-    const getStreamUrl = (id) => `http://localhost:3000/music/stream/${id}`;
 
     useEffect(() => {
         retryCount.current = 0;
@@ -115,7 +115,7 @@ const RoomPlayer = () => {
             if (data.action === 'play') {
 
                 const isNewSong = data.youtubeId !== youtubeId;
-                
+
                 dispatch(updatePlayback({
                     isPlaying: true,
                     isPaused: false,

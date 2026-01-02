@@ -2,12 +2,16 @@ import axios from 'axios';
 
 // Assuming you have a configured axios instance (e.g., api.js) 
 // If not, use standard axios with Credentials true
-const API_URL = 'http://127.0.0.1:3000/rooms'; // Adjust port if needed
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000';
 
 const api = axios.create({
-    baseURL: API_URL,
+    baseURL: `${API_BASE_URL}/rooms`,
     withCredentials: true // Crucial for sending Cookies/Auth
 });
+
+export const getStreamUrl = (videoId) => {
+    return `${API_BASE_URL}/music/stream/${videoId}`;
+};
 
 // 1. Room Management
 export const createRoom = async (roomData) => {

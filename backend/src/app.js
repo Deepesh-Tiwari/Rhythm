@@ -25,6 +25,7 @@ const { cleanupCache } = require("./services/cleanupService");
 
 const app = express();
 const server = http.createServer(app);
+app.set('trust proxy', 1); 
 
 const PORT = process.env.PORT || 3000;
 const CLIENT_URL = process.env.CLIENT_URL || "http://127.0.0.1:5173";
