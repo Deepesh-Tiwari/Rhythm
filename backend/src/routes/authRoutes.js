@@ -26,6 +26,22 @@ const generateRandomString = (length) => {
         .slice(0, length);
 }
 
+const COOKIE_OPTIONS = {
+    httpOnly: true,
+    // Secure MUST be true if SameSite is 'None'
+    secure: true,
+    // Allow sending cookie to a different domain
+    sameSite: "none",
+    maxAge: 24 * 60 * 60 * 1000 // 1 day
+};
+
+const LOCAL_COOKIE_OPTIONS = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 24 * 60 * 60 * 1000 // 1 day
+}
+
 // Helper function to generate a unique username (important for new users)
 const generateUniqueUsername = async (displayName) => {
     let username = displayName.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
@@ -71,12 +87,7 @@ authRouter.post("/signup", async (req, res) => {
 
         const token = user.getJWT();
 
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-            maxAge: 24 * 60 * 60 * 1000 // 1 day
-        });
+        res.cookie("token", token, COOKIE_OPTIONS);
         res.status(200).json({ message: "SignUp Sucessfull", data: user });
 
     } catch (error) {
@@ -103,12 +114,7 @@ authRouter.post("/login", async (req, res) => {
 
         //console.log(token);
 
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-            maxAge: 24 * 60 * 60 * 1000 // 1 day
-        });
+        res.cookie("token", token, COOKIE_OPTIONS);
         res.status(200).json({ message: "Login Sucessfull", data: user });
 
     } catch (error) {
@@ -121,8 +127,8 @@ authRouter.post("/logout", (req, res) => {
 
     res.cookie("token", null, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: true,
+        sameSite: "none",
         maxAge: 0// 1 day
     });
 
@@ -263,12 +269,7 @@ authRouter.get("/spotify/callback", async (req, res) => {
 
         const token = user.getJWT();
 
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 24 * 60 * 60 * 1000 // 1 day
-        });
+        res.cookie("token", token, COOKIE_OPTIONS);
         //res.status(200).json({message : "Login Sucessfull", data : user});
         res.redirect(`${CLIENT_URL}/spotify-success`);
 
@@ -331,7 +332,6 @@ authRouter.post("/reset-password", async (req, res) => {
             return res.status(500).json({ message: "Email could not be sent. Please try again later." });
         }
 
-        res.status(200).json({ message: "Password reset Email sent to user Registed email" })
 
     } catch (error) {
         res.status(400).send("Some Problem with server : " + error.message);
