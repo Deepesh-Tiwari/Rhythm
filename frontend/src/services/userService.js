@@ -16,6 +16,16 @@ export const saveMusicProfile = async (musicProfileData) => {
     }
 };
 
+export const updateMusicProfile = async (payload) => {
+    try {
+        const response = await apiClient.patch('/users/me/profile/music', payload);
+        return response.data;
+    } catch (error) {
+        console.error("API Error updating music profile:", error);
+        throw error;
+    }
+};
+
 export const updateUserProfile = async (userProfileData) => {
     try {
         

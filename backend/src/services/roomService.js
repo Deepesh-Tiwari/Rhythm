@@ -120,9 +120,67 @@ const playNextSong = async (roomId) => {
     return room;
 };
 
+const handleUserLeaveRoom = async (roomId, userId, io) => {
+    try {
+        const room = await Room.findById(roomId);
+        if (!room) return null;
+
+        console.log(`👤 User ${userId} leaving room ${room.code}`);
+
+        // 1. Remove user from members list
+        const initialLength = room.activeMembers.length;
+        room.activeMembers = room.activeMembers.filter(
+            m => m.user.toString() !== userId.toString()
+        );
+
+        // If user wasn't in the list, just return
+        if (room.activeMembers.length === initialLength) return room;
+
+        // 2. Handle Host Migration
+        if (room.host.toString() === userId.toString()) {
+            if (room.activeMembers.length > 0) {
+                // Promote oldest member
+                const nextHost = room.activeMembers.sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt))[0];
+                room.host = nextHost.user;
+
+                // Update role inside the array
+                const memberIdx = room.activeMembers.findIndex(m => m.user.toString() === nextHost.user.toString());
+                if (memberIdx !== -1) {
+                    room.activeMembers[memberIdx].role = 'host';
+                }
+                console.log(`👑 Host migrated to ${nextHost.user}`);
+            } else {
+                // Close room if empty
+                console.log("🌑 Room is now empty. Deactivating.");
+                room.isActive = false;
+            }
+        }
+
+        await room.save();
+
+        // 3. Broadcast Update to Room (Only if room is still active)
+        if (io && room.isActive) {
+            // Populate to get user details for the frontend list
+            const updatedRoom = await Room.findById(room._id).populate('activeMembers.user', 'username displayName profilePic');
+
+            io.to(room._id.toString()).emit('room_update', {
+                type: 'MEMBERS_UPDATE',
+                activeMembers: updatedRoom ? updatedRoom.activeMembers : [],
+                newHostId: room.host
+            });
+        }
+
+        return room;
+    } catch (error) {
+        console.error("Error in handleUserLeaveRoom:", error);
+        throw error;
+    }
+};
+
 module.exports = {
     createRoom,
     addSongToQueue,
     getRoomSyncState,
-    playNextSong
+    playNextSong,
+    handleUserLeaveRoom
 };

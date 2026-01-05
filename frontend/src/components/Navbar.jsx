@@ -57,7 +57,7 @@ const Navbar = () => {
                 {isAuthenticated && (
                     <ul className="menu menu-horizontal px-1 font-semibold">
                         <li><Link to="/">Discover</Link></li>
-                        <li><Link to="/rooms/KFGZHL">Rooms</Link></li>
+                        <li><Link to="/rooms/YS8TIE">Rooms</Link></li>
                         <li><Link to="/connections">Connections</Link></li>
                         <li><Link to="/requests">Requests</Link></li>
                     </ul>

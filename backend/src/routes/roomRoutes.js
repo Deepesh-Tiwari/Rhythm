@@ -2,6 +2,7 @@ const express = require("express");
 const { userAuth } = require("../middlewares/authMiddleware");
 const { createRoom } = require("../services/roomService")
 const Room = require("../models/room");
+const { handleUserLeaveRoom } = require("../services/roomService");
 
 const roomRouter = express.Router();
 
@@ -253,6 +254,31 @@ roomRouter.patch("/:code/role", userAuth, async(req, res) => {
         res.status(500).json({ message: "Server Error" });
     }
 })
+
+roomRouter.post("/:code/leave", userAuth, async (req, res) => {
+    try {
+        const { code } = req.params;
+        const userId = req.user._id;
+
+        const room = await Room.findOne({ code, isActive: true });
+        
+        if (!room) {
+            // Even if room is closed, we just say success to let frontend redirect
+            return res.status(200).json({ message: "Left room." });
+        }
+
+        const io = req.app.get('io');
+        
+        // ✅ Reuse the logic
+        await handleUserLeaveRoom(room._id, userId, io);
+
+        res.status(200).json({ message: "Successfully left the room." });
+
+    } catch (error) {
+        console.error("Leave Room Error:", error);
+        res.status(500).json({ message: "Server Error: " + error.message });
+    }
+});
 
 roomRouter.delete('/:code/members/:userId', userAuth, async (req, res) => {
     try {

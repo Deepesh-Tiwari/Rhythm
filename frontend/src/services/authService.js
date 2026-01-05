@@ -33,7 +33,7 @@ export const loginUser = async (email, password) => {
 }
 
 export const redirectToSpotify = () => {
-  window.location.href = `http://127.0.0.1:3000/auth/spotify`;
+  window.location.href = `${API_BASE_URL}/auth/spotify`;
 };
 
 export const getUser = async () => {

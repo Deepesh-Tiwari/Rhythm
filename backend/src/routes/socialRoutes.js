@@ -230,4 +230,43 @@ socialRouter.get("/recommendations", userAuth, async ( req, res) => {
 
 })
 
+socialRouter.get("/recommendations/random", userAuth, async(req, res) => {
+    try {
+        
+        const loggedInUserId = req.user._id;
+        const limit = parseInt(req.query.limit, 10) || 20;
+
+        const currentUser = await User.findById(loggedInUserId).select('friends');
+        const excludeIds = [loggedInUserId]; 
+
+        if (currentUser.friends) {
+            currentUser.friends.forEach(id => excludeIds.push(id));
+        }
+
+        const existingRequests = await ConnectionRequest.find({
+            $or: [
+                { fromUserId: loggedInUserId },
+                { toUserId: loggedInUserId }
+            ]
+        }).select('fromUserId toUserId');
+
+        existingRequests.forEach(req => {
+            excludeIds.push(req.fromUserId);
+            excludeIds.push(req.toUserId);
+        });
+
+        const randomUsers = await User.aggregate([
+            { $match: { _id: { $nin: excludeIds } } }, // Exclude unwanted users
+            { $sample: { size: limit } },              // Get N random docs
+            { $project: { username: 1, displayName: 1, profilePic: 1, musicTaste: 1 } } // Select fields
+        ]);
+
+        res.status(200).json(randomUsers);
+
+    } catch (error) {
+        console.error("Error getting connections: ", error);
+        res.status(500).json({ message: "An internal server error occurred: " + error.message });
+    }
+})
+
 module.exports = socialRouter;

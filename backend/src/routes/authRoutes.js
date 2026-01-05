@@ -7,6 +7,11 @@ const nodemailer = require("nodemailer");
 const User = require("../models/user");
 const { validateSignUp } = require("../utils/validation")
 const sendEmail = require('../services/emailService');
+const { userAuth } = require("../middlewares/authMiddleware");
+const Room = require("../models/room");
+const { handleUserLeaveRoom } = require("../services/roomService")
+
+
 
 
 const authRouter = express.Router();
@@ -123,7 +128,19 @@ authRouter.post("/login", async (req, res) => {
 
 })
 
-authRouter.post("/logout", (req, res) => {
+authRouter.post("/logout", userAuth, async(req, res) => {
+
+    const userId = req.user._id;
+
+    const room = await Room.findOne({ 
+            "activeMembers.user": userId, 
+            isActive: true 
+        });
+
+    if(room){
+        const io = req.app.get('io');
+        await handleUserLeaveRoom(room._id, userId, io);
+    }
 
     res.cookie("token", null, {
         httpOnly: true,

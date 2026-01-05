@@ -45,7 +45,9 @@ app.set('io', io);
 socketInit(io);
 
 
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, 

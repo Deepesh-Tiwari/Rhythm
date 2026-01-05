@@ -9,6 +9,7 @@ import {
     MusicalNoteIcon, MagnifyingGlassIcon, XMarkIcon,
     PlusIcon, PlayCircleIcon, UserIcon, ExclamationTriangleIcon, CheckCircleIcon
 } from '@heroicons/react/24/outline';
+import { updateMusicProfile } from '../services/userService';
 
 const MusicTasteEditPage = () => {
     const navigate = useNavigate();
@@ -141,9 +142,8 @@ const MusicTasteEditPage = () => {
                 topTracks: payloadTracks
             };
 
-
             // Replace with your actual endpoint
-            await axios.patch('http://127.0.0.1:3000/users/me/profile/music', payload, { withCredentials: true });
+            updateMusicProfile(payload);
             await dispatch(checkAuthStatus());
             navigate('/');
         } catch (err) {

@@ -1,42 +1,43 @@
 import React, { useState } from 'react'; // <-- 1. Import useState
-import { useGetRecommendationsQuery, useSendConnectionRequestMutation, useGetUserProfileQuery } from "../features/social/socialApiSlice";
+import { useSendConnectionRequestMutation, useGetUserProfileQuery } from "../features/social/socialApiSlice";
+import useSmartRecommendations from '../hooks/useSmartRecommendations';
 import UserCard from '../components/UserCard';
 import MusicInterestPanel from '../components/MusicIntrestPanel';
 import ActiveRoomsPanel from '../components/ActiveRoomsPanel';
-import { XMarkIcon, HeartIcon } from '@heroicons/react/24/solid'; // For the new buttons
+import { XMarkIcon, HeartIcon , ArrowPathIcon} from '@heroicons/react/24/solid'; // For the new buttons
 
 const HomePage = () => {
-    // --- LOGIC SECTION (Almost no changes here) ---
-
-    // 2. Add state to track the current card's index
+    // --- UI State ---
     const [currentIndex, setCurrentIndex] = useState(0);
     const [overlayState, setOverlayState] = useState('none');
     const [isAnimating, setIsAnimating] = useState(false);
 
+    // --- Smart Data Fetching ---
     const {
-        data: recommendations,
-        isLoading: isLoadingRecs, // Renamed from isLoading
-        isError: isRecsError,     // Renamed from isError
-    } = useGetRecommendationsQuery();
+        data: recommendations = [],
+        isLoading: isLoadingRecs,
+        isError: isRecsError,
+        isUsingFallback, // ✅ Check if using Random or AI
+        refetch: refetchRecs
+    } = useSmartRecommendations();
 
     const [sendConnectionRequest, { isLoading: isConnecting }] = useSendConnectionRequestMutation();
 
-    // 3. Get the single user to display based on the current index
+    // Safely get current user
     const currentUser = recommendations?.[currentIndex];
-    const currentUsername = recommendations?.[currentIndex]?.username;
+    const currentUsername = currentUser?.username;
 
+    // Fetch Full Profile
     const {
         data: fullUser,
-        isLoading: isLoadingProfile, // Renamed from isLoading
-        isError: isProfileError,     // Renamed from isError
-        error, // We can keep 'error' as is if we handle it carefully
+        isLoading: isLoadingProfile,
+        isFetching: isFetchingProfile
     } = useGetUserProfileQuery(currentUsername, {
-        skip: !currentUsername, // This is correct and very important!
+        skip: !currentUsername,
     });
 
     const ANIMATION_DURATION = 300;
 
-    // 4. Create a function to move to the next card
     const goToNextCard = () => {
         setOverlayState('none');
         setIsAnimating(false);
@@ -44,9 +45,9 @@ const HomePage = () => {
     };
 
     const handleSkip = () => {
-        if (isAnimating) return; // Prevent double clicks
+        if (isAnimating) return;
         setIsAnimating(true);
-        setOverlayState('skip'); // Show red gradient
+        setOverlayState('skip');
 
         setTimeout(() => {
             goToNextCard();
@@ -54,111 +55,123 @@ const HomePage = () => {
     };
 
     const handleConnect = async () => {
-        if (isAnimating || !fullUser) return; // Prevent double clicks
+        if (isAnimating || !fullUser) return;
         setIsAnimating(true);
-        setOverlayState('like'); // Show green gradient
+        setOverlayState('like');
 
         try {
             await sendConnectionRequest(fullUser._id).unwrap();
-            // Wait for animation to finish before moving to the next card
-            setTimeout(() => {
-                goToNextCard();
-            }, ANIMATION_DURATION);
+            setTimeout(goToNextCard, ANIMATION_DURATION);
         } catch (err) {
             console.error('Failed to send connection request:', err);
-            alert(err.data?.message || 'Could not send request.');
-            // Reset state on failure
+            // alert(err.data?.message || 'Could not send request.');
             setIsAnimating(false);
             setOverlayState('none');
         }
     };
 
-    // --- RENDER SECTION (Only the success state JSX is changed) ---
+    // --- HELPER: Render Center Card (Handles Loading/Error/Success) ---
+    const renderCenterCard = () => {
+        
+        // A. Loading State
+        if (isLoadingRecs || (currentUsername && isFetchingProfile)) {
+            return (
+                <div className="h-96 flex flex-col items-center justify-center text-base-content/50">
+                    <span className="loading loading-spinner loading-lg text-primary"></span>
+                    <p className="mt-4 text-sm animate-pulse font-medium">
+                        {isUsingFallback ? "Finding new people..." : "Consulting the music AI..."}
+                    </p>
+                </div>
+            );
+        }
 
-    if (isLoadingRecs || isLoadingProfile) {
+        // B. Error State
+        if (isRecsError) {
+            return (
+                <div className="h-96 flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-error/30 rounded-3xl bg-error/5 w-full">
+                    <h3 className="text-lg font-bold text-error">Connection Error</h3>
+                    <p className="text-sm text-base-content/70 mt-2">Could not fetch recommendations.</p>
+                    <button onClick={refetchRecs} className="btn btn-sm btn-outline btn-error mt-4 gap-2">
+                        <ArrowPathIcon className="w-4 h-4" /> Try Again
+                    </button>
+                </div>
+            );
+        }
+
+        // C. End of List
+        if (!fullUser) {
+             return (
+                <div className="text-center py-16 h-96 flex flex-col justify-center w-full bg-base-200/50 rounded-3xl border-2 border-dashed border-base-300">
+                    <h2 className="text-2xl font-bold opacity-80">All Caught Up!</h2>
+                    <p className="text-base-content/60 mt-2">No more recommendations for now.</p>
+                    <button onClick={() => setCurrentIndex(0)} className="btn btn-ghost mt-4 text-primary">Start Over</button>
+                </div>
+            );
+        }
+
+        // D. Success State
         return (
-            <div className="flex justify-center items-center h-screen">
-                <span className="loading loading-spinner loading-lg text-primary"></span>
+            <div className="relative group w-full">
+                {/* Fallback Indicator */}
+                {isUsingFallback && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                        <div className="badge badge-warning gap-1 text-xs font-mono opacity-80 shadow-sm">
+                            ⚠️ AI Sleeping - Random Mode
+                        </div>
+                    </div>
+                )}
+                
+                {!isUsingFallback && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                        <div className="badge badge-primary gap-1 text-xs font-mono opacity-90 shadow-sm">
+                            <SparklesIcon className="w-3 h-3" /> AI Match
+                        </div>
+                    </div>
+                )}
+
+                <UserCard user={fullUser} />
+
+                {/* Controls */}
+                <button
+                    onClick={handleSkip}
+                    disabled={isConnecting}
+                    className="absolute top-1/2 -translate-y-1/2 left-4 btn btn-circle btn-lg bg-base-100/90 backdrop-blur-sm shadow-xl z-20 border-none opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all hover:scale-110 hover:bg-white text-error"
+                >
+                    <XMarkIcon className="h-8 w-8" />
+                </button>
+
+                <button
+                    onClick={handleConnect}
+                    disabled={isConnecting}
+                    className="absolute top-1/2 -translate-y-1/2 right-4 btn btn-circle btn-lg bg-base-100/90 backdrop-blur-sm shadow-xl z-20 border-none opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all hover:scale-110 hover:bg-white text-primary"
+                >
+                    <HeartIcon className="h-8 w-8" />
+                </button>
             </div>
         );
-    }
-
-    if (isRecsError || isProfileError) {
-        return <div className="alert alert-error m-4">Error: {error.data?.message}</div>;
-    }
+    };
 
     return (
         <div className="w-full max-w-[1400px] mx-auto px-4 py-8 md:px-6">
-
-            {/* RESPONSIVE GRID DEFINITION:
-                1. grid-cols-1: Default for Mobile/Tablet (Stacks vertically).
-                2. lg:grid-cols-[...]: Switches to 3 columns only on Large screens.
-                3. justify-items-center: Centers the card on Mobile/Tablet.
-                4. lg:justify-between: Spreads the 3 panels apart on Desktop.
+            
+            {/* ✅ RESPONSIVE LAYOUT: 
+                - Mobile: Stacked (User Card First, then Music, then Rooms)
+                - Desktop: 3 Columns
             */}
-            <div className="grid grid-cols-1 lg:grid-cols-[22rem_28rem_22rem] gap-8 lg:gap-16 items-start justify-items-center lg:justify-between">
+            <div className="grid grid-cols-1 lg:grid-cols-[22rem_1fr_22rem] gap-8 lg:gap-12 items-start">
 
-                {/* --- LEFT PANEL: Hidden on Mobile/Tablet --- */}
-                <div className="hidden lg:block w-full sticky top-8 ml-auto">
+                {/* 1. LEFT PANEL (Music Taste) -> Order 2 on Mobile */}
+                <div className="w-full order-2 lg:order-1 lg:sticky lg:top-8">
                     <MusicInterestPanel />
                 </div>
 
-
-                {/* --- CENTER: User Card --- */}
-                {/* max-w-md ensures it looks good on Tablet (doesn't stretch too wide). 
-                    On lg, the grid column handles the width. */}
-                <div className="flex flex-col items-center w-full max-w-md lg:max-w-full relative z-0">
-                    {fullUser ? (
-                        <div className="relative group w-full">
-                            <UserCard user={fullUser} />
-
-                            {/* --- BUTTONS --- 
-                                Updates for Mobile:
-                                1. opacity-100 lg:opacity-0: Always visible on mobile (no hover), fade on desktop.
-                                2. left-4 / right-4: Inside the screen on mobile.
-                                3. -left-16 / -right-16: Outside the card on desktop.
-                            */}
-
-                            {/* Skip Button (Left Inside) */}
-                            <button
-                                onClick={goToNextCard}
-                                disabled={isConnecting}
-                                className="absolute top-1/2 -translate-y-1/2 
-                                            left-4 
-                                            btn btn-circle btn-lg bg-base-100/90 backdrop-blur-sm shadow-xl z-20 border-none
-                                            opacity-100 lg:opacity-0 lg:group-hover:opacity-100
-                                            transition-all duration-300 ease-in-out hover:scale-110 hover:bg-white"
-                                aria-label="Skip"
-                            >
-                                <XMarkIcon className="h-8 w-8 text-error" />
-                            </button>
-
-                            {/* Connect Button (Right Inside) */}
-                            <button
-                                onClick={() => handleConnect(fullUser._id)}
-                                disabled={isConnecting}
-                                className="absolute top-1/2 -translate-y-1/2 
-                                            right-4
-                                            btn btn-circle btn-lg bg-base-100/90 backdrop-blur-sm shadow-xl z-20 border-none
-                                            opacity-100 lg:opacity-0 lg:group-hover:opacity-100
-                                            transition-all duration-300 ease-in-out hover:scale-110 hover:bg-white"
-                                aria-label="Connect"
-                            >
-                                <HeartIcon className="h-8 w-8 text-primary" />
-                            </button>
-                        </div>
-
-                    ) : (
-                        <div className="text-center py-16 h-96 flex flex-col justify-center w-full">
-                            <h2 className="text-2xl font-bold">All Caught Up!</h2>
-                            <p className="text-base-content/70 mt-2">You've seen all recommendations for now.</p>
-                        </div>
-                    )}
+                {/* 2. CENTER PANEL (User Card) -> Order 1 on Mobile */}
+                <div className="flex flex-col items-center w-full max-w-md mx-auto lg:max-w-full relative z-0 order-1 lg:order-2 mb-8 lg:mb-0">
+                    {renderCenterCard()}
                 </div>
 
-
-                {/* --- RIGHT PANEL: Hidden on Mobile/Tablet --- */}
-                <div className="hidden lg:block w-full sticky top-8 mr-auto">
+                {/* 3. RIGHT PANEL (Active Rooms) -> Order 3 on Mobile */}
+                <div className="w-full order-3 lg:order-3 lg:sticky lg:top-8">
                     <ActiveRoomsPanel />
                 </div>
 

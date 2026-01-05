@@ -80,7 +80,7 @@ const MusicInterestPanel = () => {
 
 
                 {/* Content Logic */}
-                {(!musicTaste && !isConnected) ? (
+                {(!musicTaste && !isSpotifyConnected) ? (
                     // FALLBACK: If no music data is found
                     <div className="flex flex-col items-center justify-center h-full opacity-60 mt-4">
                         <p className="text-center italic">No music data connected yet.</p>

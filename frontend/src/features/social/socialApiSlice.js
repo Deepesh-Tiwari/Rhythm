@@ -20,6 +20,11 @@ export const socialApiSlice = createApi({
             providesTags: ['Recommendations'],
         }),
 
+        getRandomRecommendations : builder.query({
+            query : (limit = 20) => `/recommendations/random?limit=${limit}`,
+            providesTags: ['Recommendations']
+        }),
+
         getUserProfile: builder.query({
             query: (username) => `/${username}`, // This will make a GET request to /users/:username
             transformResponse: (response) => response.userData,
@@ -63,6 +68,7 @@ export const socialApiSlice = createApi({
 
 export const {
   useGetRecommendationsQuery,
+  useGetRandomRecommendationsQuery,
   useGetUserProfileQuery,
   useGetConnectionsQuery,
   useGetRequestsQuery,

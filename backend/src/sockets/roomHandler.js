@@ -1,4 +1,5 @@
 const Room = require('../models/room');
+const { handleUserLeaveRoom } = require("../services/roomService");
 
 const roomHandler = (io, socket) => {
 
@@ -45,61 +46,29 @@ const roomHandler = (io, socket) => {
     // HANDLE DISCONNECT (Close Tab)
     socket.on('disconnect', async () => {
         try {
-            // 1. Find the room where this socket was a member
+            // 1. Find room by socket ID
             const room = await Room.findOne({ "activeMembers.socketId": socket.id });
-
+            
             if (room) {
-                // 2. Identify WHO is leaving (Get userId before removing them)
-                const memberLeaving = room.activeMembers.find(m => m.socketId === socket.id);
-                if (!memberLeaving) return;
+                const member = room.activeMembers.find(m => m.socketId === socket.id);
+                if (!member) return;
 
-                const userId = memberLeaving.user.toString(); // ✅ FIX: Extract ID here
-                console.log(`👋 User ${userId} (Socket: ${socket.id}) leaving room ${room.code}`);
+                const userId = member.user.toString();
+                
+                console.log(`⚠️ User ${userId} disconnected. Waiting 5s before removal...`);
 
-                // 3. Remove user from activeMembers
-                room.activeMembers = room.activeMembers.filter(m => m.socketId !== socket.id);
+                // 2. SET TIMEOUT (The Grace Period)
+                // We wait 5 seconds. If they don't rejoin by then, we remove them.
+                const timer = setTimeout(async () => {
+                    // console.log(`❌ Grace period over. Removing User ${userId}.`);
+                    
+                    await handleUserLeaveRoom(room._id, userId, io);
+                    
+                    disconnectTimers.delete(userId);
+                }, 5000); // 5 Seconds wait time
 
-                // 4. HOST MIGRATION LOGIC
-                // Check if the person leaving was the Host
-                if (room.host.toString() === userId) {
-
-                    if (room.activeMembers.length > 0) {
-                        // Promote the oldest remaining member
-                        // Sort by joinedAt (Ascending) -> First one is oldest
-                        const newHostMember = room.activeMembers.sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt))[0];
-
-                        room.host = newHostMember.user; // Assign new Host ID
-
-                        // Update roles in the array
-                        room.activeMembers = room.activeMembers.map(m => {
-                            if (m.user.toString() === newHostMember.user.toString()) {
-                                return { ...m, role: 'host' };
-                            }
-                            return m;
-                        });
-
-                        console.log(`👑 Host migrated to User ${newHostMember.user}`);
-                    } else {
-                        console.log("🌑 Room is now empty.");
-                        room.isActive = false; // Mark inactive if empty
-                        // Optional: Clear playback state
-                        room.currentPlayback = { isPlaying: false, youtubeId: null };
-                    }
-                }
-
-                await room.save();
-
-                // 5. Broadcast update to remaining users
-                // Populate users so frontend gets names/avatars
-                const updatedRoom = await Room.findById(room._id).populate('activeMembers.user', 'username displayName profilePic');
-
-                if (updatedRoom) {
-                    io.to(room._id.toString()).emit('room_update', {
-                        type: 'MEMBERS_UPDATE',
-                        activeMembers: updatedRoom.activeMembers,
-                        newHostId: room.host // Send new Host ID so frontend updates controls
-                    });
-                }
+                // Save timer so 'join_room' can cancel it
+                disconnectTimers.set(userId, timer);
             }
         } catch (err) {
             console.error("Disconnect Error:", err);
