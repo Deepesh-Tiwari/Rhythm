@@ -46,6 +46,13 @@ const getCachedAudio = async(videoId) => {
         const args = [
             '-f', 'bestaudio',
             '--no-playlist',
+
+            // 1. Impersonate Android App (Bypasses Web 429 blocks)
+            // '--extractor-args', 'youtube:player_client=android',
+
+            // 2. Force IPv4 (Cloud IPv6 is often dirty)
+            '--force-ipv4',
+            '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             '-o', filePath,
             videoUrl
         ];
