@@ -30,14 +30,21 @@ const app = express();
 const server = http.createServer(app);
 app.set('trust proxy', 1); 
 
-const COOKIES_CONTENT = process.env.YOUTUBE_COOKIES;
+const COOKIES_ENV = process.env.YOUTUBE_COOKIES;
 const COOKIES_PATH = path.join(__dirname, 'cookies.txt');
 
-if (COOKIES_CONTENT) {
+if (COOKIES_ENV) {
     try {
-        
-        fs.writeFileSync(COOKIES_PATH, COOKIES_CONTENT);
-        console.log("🍪 cookies.txt created successfully.");
+        // 1. Fix escaped newlines (common issue with Env Vars)
+        let formattedCookies = COOKIES_ENV.replace(/\\n/g, '\n');
+
+        // 2. Ensure the required Header exists (yt-dlp needs this)
+        if (!formattedCookies.startsWith('# Netscape HTTP Cookie File')) {
+            formattedCookies = '# Netscape HTTP Cookie File\n' + formattedCookies;
+        }
+
+        fs.writeFileSync(COOKIES_PATH, formattedCookies);
+        console.log("🍪 cookies.txt created successfully (formatted).");
     } catch (err) {
         console.error("❌ Failed to create cookies.txt:", err.message);
     }
