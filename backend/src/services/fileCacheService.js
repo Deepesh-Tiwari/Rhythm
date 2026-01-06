@@ -95,4 +95,18 @@ const getCachedAudio = async(videoId) => {
 
 }
 
-module.exports = { getCachedAudio };
+const isSongInCache = (videoId) => {
+    try {
+        const filePath = getFilePath(videoId);
+        if (fs.existsSync(filePath)) {
+            const stats = fs.statSync(filePath);
+            // Ensure it's a real file, not an empty error log (> 50KB)
+            return stats.size > 50000;
+        }
+    } catch (e) {
+        return false;
+    }
+    return false;
+};
+
+module.exports = { getCachedAudio, isSongInCache };

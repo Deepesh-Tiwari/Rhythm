@@ -1,6 +1,7 @@
 const Room = require("../models/room");
 const ShortUniqueId = require("short-unique-id");
 const {resolveToYoutube} = require("./youtubeService");
+const { isSongInCache } = require("./fileCacheService");
 
 
 const uid = new ShortUniqueId({length : 6});
@@ -44,6 +45,10 @@ const addSongToQueue = async (roomId, spotifyTrack, addedByUserId) => {
     );
 
     if (!youtubeId) throw new Error("Could not find playable audio for this track.");
+
+    if (!isSongInCache(youtubeId)) {
+        throw new Error("This song is not available in the demo cache. Please try 'Starboy' or 'Popular'.");
+    }
 
     const queueItem = {
         spotifyId: spotifyTrack.id,
