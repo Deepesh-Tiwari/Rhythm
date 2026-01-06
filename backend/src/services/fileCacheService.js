@@ -3,6 +3,7 @@ const fsPromises = require('fs').promises;
 const path = require('path');
 const { spawn } = require('child_process');
 const CACHE_DIR = path.join(__dirname, '../../music_cache');
+const COOKIES_PATH = path.join(__dirname, '../cookies.txt');
 
 const ensureDir = async () => {
     try {
@@ -42,12 +43,28 @@ const getCachedAudio = async(videoId) => {
 
         const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-       const ytDlp = spawn('yt-dlp', [
-            '-f', 'bestaudio',   // Best Quality
-            '--no-playlist',     // Single video only
-            '-o', filePath,      // Save to Disk (Critical for Cache)
+        const args = [
+            '-f', 'bestaudio',
+            '--no-playlist',
+            '-o', filePath,
             videoUrl
-        ]);
+        ];
+
+        if (fs.existsSync(COOKIES_PATH)) {
+            console.log("🍪 Passing cookies to yt-dlp...");
+            args.push('--cookies', COOKIES_PATH);
+        }
+
+    //    const ytDlp = spawn('yt-dlp', [
+    //         '-f', 'bestaudio',   // Best Quality
+    //         '--no-playlist',     // Single video only
+    //         '-o', filePath,      // Save to Disk (Critical for Cache)
+    //         videoUrl
+    //     ]);
+
+        const ytDlp = spawn('yt-dlp', args);
+
+        ytDlp.stderr.on('data', (data) => console.error(`[yt-dlp stderr]: ${data}`));
 
         ytDlp.on('close', async (code) => {
             if (code === 0) {

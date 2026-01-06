@@ -1,5 +1,8 @@
 require('dotenv').config()
 
+const fs = require('fs');
+const path = require('path');
+
 const express = require("express");
 const cors = require('cors');
 const http = require("http");
@@ -26,6 +29,21 @@ const { cleanupCache } = require("./services/cleanupService");
 const app = express();
 const server = http.createServer(app);
 app.set('trust proxy', 1); 
+
+const COOKIES_CONTENT = process.env.YOUTUBE_COOKIES;
+const COOKIES_PATH = path.join(__dirname, 'cookies.txt');
+
+if (COOKIES_CONTENT) {
+    try {
+        
+        fs.writeFileSync(COOKIES_PATH, COOKIES_CONTENT);
+        console.log("🍪 cookies.txt created successfully.");
+    } catch (err) {
+        console.error("❌ Failed to create cookies.txt:", err.message);
+    }
+} else {
+    console.warn("⚠️ YOUTUBE_COOKIES env var is missing! Downloads may fail.");
+}
 
 const PORT = process.env.PORT || 3000;
 const CLIENT_URL = process.env.CLIENT_URL || "http://127.0.0.1:5173";

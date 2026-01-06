@@ -4,7 +4,7 @@ import useSmartRecommendations from '../hooks/useSmartRecommendations';
 import UserCard from '../components/UserCard';
 import MusicInterestPanel from '../components/MusicIntrestPanel';
 import ActiveRoomsPanel from '../components/ActiveRoomsPanel';
-import { XMarkIcon, HeartIcon , ArrowPathIcon} from '@heroicons/react/24/solid'; // For the new buttons
+import { XMarkIcon, HeartIcon , ArrowPathIcon, SparklesIcon} from '@heroicons/react/24/solid'; // For the new buttons
 
 const HomePage = () => {
     // --- UI State ---
