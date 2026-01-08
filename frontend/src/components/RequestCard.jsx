@@ -1,60 +1,59 @@
-// src/components/RequestCard.jsx
-
 import React from 'react';
-import { CheckIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { CheckIcon, XMarkIcon, UserPlusIcon } from '@heroicons/react/24/solid';
 
 const RequestCard = ({ request, onAccept, onDecline, isUpdating }) => {
-    // --- FIX IS HERE ---
-    // Change 'fromUser' to 'fromUserId' to match your API response
     const user = request.fromUserId; 
 
-    // Now, this check will prevent the error if for some reason the user object is missing
-    if (!user) {
-        // You can return null to hide the card or show a placeholder
-        return null; 
-    }
+    if (!user) return null; 
 
     const fallbackImage = `https://i.pravatar.cc/150?u=${user._id}`;
 
     return (
-        <div className="card card-side bg-base-200 shadow-md transition-all duration-300 hover:shadow-lg">
-            <figure className="p-4">
-                <div className="avatar">
-                    <div className="w-16 h-16 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
-                        <img src={user.profilePic || fallbackImage} alt={`${user.displayName || user.username}'s profile`} />
-                    </div>
+        <div className="flex items-center gap-4 p-4 bg-base-100 hover:bg-base-200/50 rounded-2xl shadow-sm border border-base-200 transition-colors group">
+            
+            {/* Avatar */}
+            <div className="avatar shrink-0">
+                <div className="w-14 h-14 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
+                    <img src={user.profilePic || fallbackImage} alt={user.username} />
                 </div>
-            </figure>
-
-            <div className="card-body justify-center p-4">
-                <h2 className="card-title text-base font-bold text-base-content">
-                    {user.displayName || user.username}
-                </h2>
-                <p className="text-sm text-base-content/70 -mt-1">
-                    @{user.username}
-                </p>
+                {/* Icon Badge */}
+                <div className="absolute -bottom-1 -right-1 bg-primary text-white p-1 rounded-full shadow-sm">
+                    <UserPlusIcon className="w-3 h-3" />
+                </div>
             </div>
 
-            <div className="card-actions justify-end items-center p-4">
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-base text-base-content truncate">
+                    {user.displayName || user.username}
+                </h3>
+                <p className="text-xs text-base-content/60 truncate font-mono">
+                    @{user.username}
+                </p>
+                {/* Optional: Add "Sent 2h ago" if available in request object */}
+                <p className="text-xs text-base-content/40 mt-1">wants to connect</p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2">
                 {isUpdating ? (
                     <span className="loading loading-spinner text-primary"></span>
                 ) : (
                     <>
                         <button 
-                            className="btn btn-ghost btn-circle" 
-                            aria-label="Decline"
                             onClick={() => onDecline(request._id)}
-                            disabled={isUpdating}
+                            className="btn btn-circle btn-sm btn-ghost hover:bg-error/10 text-error tooltip tooltip-left"
+                            data-tip="Decline"
                         >
-                            <XMarkIcon className="h-6 w-6 text-error" />
+                            <XMarkIcon className="w-5 h-5" />
                         </button>
+                        
                         <button 
-                            className="btn btn-primary btn-circle" 
-                            aria-label="Accept"
                             onClick={() => onAccept(request._id)}
-                            disabled={isUpdating}
+                            className="btn btn-circle btn-sm btn-primary shadow-md hover:scale-105 transition-transform tooltip tooltip-left"
+                            data-tip="Accept"
                         >
-                            <CheckIcon className="h-6 w-6" />
+                            <CheckIcon className="w-5 h-5 text-white" />
                         </button>
                     </>
                 )}

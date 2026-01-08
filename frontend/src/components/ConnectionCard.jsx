@@ -1,46 +1,47 @@
-// src/components/ConnectionCard.jsx
-
 import React from 'react';
 import { useNavigate } from 'react-router';
-import { UserIcon } from '@heroicons/react/24/solid'; // A nice icon for the button
+import { UserIcon } from '@heroicons/react/24/solid';
 
 const ConnectionCard = ({ user }) => {
     const navigate = useNavigate();
     const fallbackImage = `https://i.pravatar.cc/150?u=${user._id}`;
 
-    // This function will navigate to a user's public profile page.
-    // We'll need to add this route to App.jsx later.
     const handleViewProfile = () => {
         navigate(`/profile/${user.username}`);
     };
 
     return (
-        <div className="card bg-base-200 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-            <figure className="px-8 pt-8">
-                <div className="avatar">
-                    <div className="w-24 rounded-full ring ring-primary ring-offset-base-100 ring-offset-4">
-                        <img src={user.profilePic || fallbackImage} alt={`${user.displayName}'s profile`} />
+        <div 
+            onClick={handleViewProfile}
+            className="group relative bg-base-100 rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer border border-base-200 hover:border-primary/20 hover:-translate-y-1"
+        >
+            {/* Top Half: Cover/Avatar Area */}
+            <div className="h-32 bg-linear-to-r from-primary/10 to-secondary/10 relative">
+                <div className="absolute -bottom-10 left-1/2 -translate-x-1/2">
+                    <div className="avatar">
+                        <div className="w-20 rounded-full ring ring-base-100 ring-offset-2 ring-offset-base-100 shadow-lg group-hover:scale-105 transition-transform">
+                            <img src={user.profilePic || fallbackImage} alt={user.username} />
+                        </div>
                     </div>
                 </div>
-            </figure>
+            </div>
 
-            <div className="card-body items-center text-center">
-                <h2 className="card-title text-lg font-bold text-base-content">
+            {/* Bottom Half: Info */}
+            <div className="pt-12 pb-6 px-4 text-center">
+                <h3 className="font-bold text-lg text-base-content group-hover:text-primary transition-colors">
                     {user.displayName || user.username}
-                </h2>
-                <p className="text-sm text-base-content/70 -mt-1">
-                    @{user.username}
-                </p>
+                </h3>
+                <p className="text-xs text-base-content/60 font-mono mb-3">@{user.username}</p>
+                
+                {user.bio && (
+                    <p className="text-sm text-base-content/80 line-clamp-2 mb-4 italic">
+                        "{user.bio}"
+                    </p>
+                )}
 
-                <div className="card-actions mt-4 w-full">
-                    <button
-                        className="btn btn-secondary w-full"
-                        onClick={handleViewProfile}
-                    >
-                        <UserIcon className="h-4 w-4 mr-2" />
-                        View Profile
-                    </button>
-                </div>
+                <button className="btn btn-sm btn-outline btn-primary w-full gap-2 rounded-xl group-hover:bg-primary group-hover:text-white transition-colors">
+                    <UserIcon className="w-4 h-4" /> View Profile
+                </button>
             </div>
         </div>
     );

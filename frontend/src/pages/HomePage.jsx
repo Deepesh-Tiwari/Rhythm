@@ -1,33 +1,28 @@
-import React, { useState } from 'react'; // <-- 1. Import useState
+import React, { useState } from 'react';
 import { useSendConnectionRequestMutation, useGetUserProfileQuery } from "../features/social/socialApiSlice";
 import useSmartRecommendations from '../hooks/useSmartRecommendations';
 import UserCard from '../components/UserCard';
 import MusicInterestPanel from '../components/MusicIntrestPanel';
 import ActiveRoomsPanel from '../components/ActiveRoomsPanel';
-import { XMarkIcon, HeartIcon , ArrowPathIcon, SparklesIcon} from '@heroicons/react/24/solid'; // For the new buttons
+import { ArrowPathIcon, SparklesIcon } from '@heroicons/react/24/solid';
 
 const HomePage = () => {
-    // --- UI State ---
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [overlayState, setOverlayState] = useState('none');
-    const [isAnimating, setIsAnimating] = useState(false);
 
-    // --- Smart Data Fetching ---
+    // Smart Data Fetching
     const {
         data: recommendations = [],
         isLoading: isLoadingRecs,
         isError: isRecsError,
-        isUsingFallback, // ✅ Check if using Random or AI
+        isUsingFallback,
         refetch: refetchRecs
     } = useSmartRecommendations();
 
     const [sendConnectionRequest, { isLoading: isConnecting }] = useSendConnectionRequestMutation();
 
-    // Safely get current user
     const currentUser = recommendations?.[currentIndex];
     const currentUsername = currentUser?.username;
 
-    // Fetch Full Profile
     const {
         data: fullUser,
         isLoading: isLoadingProfile,
@@ -36,47 +31,28 @@ const HomePage = () => {
         skip: !currentUsername,
     });
 
-    const ANIMATION_DURATION = 300;
-
-    const goToNextCard = () => {
-        setOverlayState('none');
-        setIsAnimating(false);
-        setCurrentIndex(prevIndex => prevIndex + 1);
-    };
+    // --- Simple Handlers ---
 
     const handleSkip = () => {
-        if (isAnimating) return;
-        setIsAnimating(true);
-        setOverlayState('skip');
-
-        setTimeout(() => {
-            goToNextCard();
-        }, ANIMATION_DURATION);
+        setCurrentIndex(prev => prev + 1);
     };
 
     const handleConnect = async () => {
-        if (isAnimating || !fullUser) return;
-        setIsAnimating(true);
-        setOverlayState('like');
-
+        if (!fullUser || isConnecting) return;
         try {
             await sendConnectionRequest(fullUser._id).unwrap();
-            setTimeout(goToNextCard, ANIMATION_DURATION);
+            setCurrentIndex(prev => prev + 1);
         } catch (err) {
             console.error('Failed to send connection request:', err);
-            // alert(err.data?.message || 'Could not send request.');
-            setIsAnimating(false);
-            setOverlayState('none');
         }
     };
 
-    // --- HELPER: Render Center Card (Handles Loading/Error/Success) ---
+    // --- Render Logic ---
     const renderCenterCard = () => {
-        
-        // A. Loading State
+        // A. Loading
         if (isLoadingRecs || (currentUsername && isFetchingProfile)) {
             return (
-                <div className="h-96 flex flex-col items-center justify-center text-base-content/50">
+                <div className="h-96 flex flex-col items-center justify-center text-base-content/50 w-full">
                     <span className="loading loading-spinner loading-lg text-primary"></span>
                     <p className="mt-4 text-sm animate-pulse font-medium">
                         {isUsingFallback ? "Finding new people..." : "Consulting the music AI..."}
@@ -85,7 +61,7 @@ const HomePage = () => {
             );
         }
 
-        // B. Error State
+        // B. Error
         if (isRecsError) {
             return (
                 <div className="h-96 flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-error/30 rounded-3xl bg-error/5 w-full">
@@ -109,68 +85,51 @@ const HomePage = () => {
             );
         }
 
-        // D. Success State
+        // D. Success Card
         return (
-            <div className="relative group w-full">
-                {/* Fallback Indicator */}
-                {isUsingFallback && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+            <div className="w-full flex flex-col items-center relative z-10 pb-10">
+                {/* Status Badge */}
+                {/* <div className="mb-4">
+                    {isUsingFallback ? (
                         <div className="badge badge-warning gap-1 text-xs font-mono opacity-80 shadow-sm">
-                            ⚠️ AI Sleeping - Random Mode
+                            ⚠️ Random Mode
                         </div>
-                    </div>
-                )}
-                
-                {!isUsingFallback && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                    ) : (
                         <div className="badge badge-primary gap-1 text-xs font-mono opacity-90 shadow-sm">
                             <SparklesIcon className="w-3 h-3" /> AI Match
                         </div>
-                    </div>
-                )}
+                    )}
+                </div> */}
 
-                <UserCard user={fullUser} />
-
-                {/* Controls */}
-                <button
-                    onClick={handleSkip}
-                    disabled={isConnecting}
-                    className="absolute top-1/2 -translate-y-1/2 left-4 btn btn-circle btn-lg bg-base-100/90 backdrop-blur-sm shadow-xl z-20 border-none opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all hover:scale-110 hover:bg-white text-error"
-                >
-                    <XMarkIcon className="h-8 w-8" />
-                </button>
-
-                <button
-                    onClick={handleConnect}
-                    disabled={isConnecting}
-                    className="absolute top-1/2 -translate-y-1/2 right-4 btn btn-circle btn-lg bg-base-100/90 backdrop-blur-sm shadow-xl z-20 border-none opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all hover:scale-110 hover:bg-white text-primary"
-                >
-                    <HeartIcon className="h-8 w-8" />
-                </button>
+                {/* The Card Component */}
+                <div className="w-full relative shadow-xl rounded-3xl bg-base-100 border border-base-200">
+                    <UserCard 
+                        user={fullUser} 
+                        onSkip={handleSkip}       // ✅ Passed Handler
+                        onConnect={handleConnect} // ✅ Passed Handler
+                        isConnecting={isConnecting}
+                    />
+                </div>
             </div>
         );
     };
 
     return (
         <div className="w-full max-w-[1400px] mx-auto px-4 py-8 md:px-6">
-            
-            {/* ✅ RESPONSIVE LAYOUT: 
-                - Mobile: Stacked (User Card First, then Music, then Rooms)
-                - Desktop: 3 Columns
-            */}
-            <div className="grid grid-cols-1 lg:grid-cols-[22rem_1fr_22rem] gap-8 lg:gap-12 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-[22rem_1fr_22rem] gap-8 lg:gap-12 items-start justify-items-center">
 
-                {/* 1. LEFT PANEL (Music Taste) -> Order 2 on Mobile */}
+                {/* 1. LEFT PANEL */}
                 <div className="w-full order-2 lg:order-1 lg:sticky lg:top-8">
                     <MusicInterestPanel />
                 </div>
 
-                {/* 2. CENTER PANEL (User Card) -> Order 1 on Mobile */}
-                <div className="flex flex-col items-center w-full max-w-md mx-auto lg:max-w-full relative z-0 order-1 lg:order-2 mb-8 lg:mb-0">
+                {/* 2. CENTER PANEL */}
+                {/* overflow-visible ensures hover effects aren't clipped */}
+                <div className="w-full max-w-md flex flex-col items-center justify-start min-h-[500px] order-1 lg:order-2 mb-8 lg:mb-0 overflow-visible">
                     {renderCenterCard()}
                 </div>
 
-                {/* 3. RIGHT PANEL (Active Rooms) -> Order 3 on Mobile */}
+                {/* 3. RIGHT PANEL */}
                 <div className="w-full order-3 lg:order-3 lg:sticky lg:top-8">
                     <ActiveRoomsPanel />
                 </div>

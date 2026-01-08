@@ -6,6 +6,7 @@ import { MagnifyingGlassIcon, TrashIcon, PlusIcon, QueueListIcon } from '@heroic
 import { addSongThunk } from '../features/room/roomThunks';
 import { removeSongFromQueue } from '../services/roomService';
 import { searchMusic } from '../services/musicService';
+import { toast } from 'react-toastify';
 
 const RoomQueue = () => {
     const dispatch = useDispatch();
@@ -48,7 +49,7 @@ const RoomQueue = () => {
         
         dispatch(addSongThunk({ code: room.code, track }))
             .unwrap()
-            .catch(err => alert("Failed to add song: " + err));
+            .catch(err => toast.error("Song Download Service is not working, Try playing Starboy or popular"));
     };
 
     const handleRemove = async (songId) => {

@@ -283,7 +283,7 @@ const RoomPlayer = () => {
             } else if (queue.length > 0) {
                 socket.emit("track_ended", { roomId: room._id });
             } else {
-                alert("Queue is empty!");
+                toast.info("Queue is empty! Add a song to start.");
             }
         }
     };

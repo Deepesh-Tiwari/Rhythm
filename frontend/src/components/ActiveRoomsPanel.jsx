@@ -93,7 +93,7 @@ const ActiveRoomsPanel = () => {
 										</div>
 
 										{/* Equalizer Animation (Visual flair) */}
-										<div className="flex gap-[2px] items-end h-3 w-4 pb-1">
+										<div className="flex gap-0.5 items-end h-3 w-4 pb-1">
 											<span className="w-1 bg-secondary animate-[music-bar_1s_ease-in-out_infinite] h-2"></span>
 											<span className="w-1 bg-secondary animate-[music-bar_1.2s_ease-in-out_infinite_0.1s] h-3"></span>
 											<span className="w-1 bg-secondary animate-[music-bar_0.8s_ease-in-out_infinite_0.2s] h-1"></span>

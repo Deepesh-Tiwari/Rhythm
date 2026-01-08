@@ -6,11 +6,13 @@ import {
     CalendarDaysIcon,
     MusicalNoteIcon,
     MusicalNoteIcon as ArtistIcon,
-    InformationCircleIcon
+    InformationCircleIcon,
+    XMarkIcon,
+    HeartIcon
 } from '@heroicons/react/24/solid';
 
 
-const UserCard = ({ user, onConnect, isConnecting }) => {
+const UserCard = ({ user, onConnect, onSkip, isConnecting }) => {
     // A fallback image in case the user's profile picture is missing
     const fallbackImage = 'https://i.pravatar.cc/150?u=' + user._id;
 
@@ -27,12 +29,9 @@ const UserCard = ({ user, onConnect, isConnecting }) => {
         .map(artist => artist.name);
 
     return (
-        // Added 'relative' to parent so the absolute image knows where to position itself.
-        // Kept your original 'min-h-160'.
-        <div className="card w-full max-w-md min-h-160 overflow-hidden relative bg-base-200 shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col">
+        <div className="card w-full max-w-md min-h-160 overflow-hidden relative group bg-base-200 shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 flex flex-col">
 
             {/* --- BACKGROUND IMAGE --- */}
-            {/* Removed 'figure'. Image is now absolute to cover the whole card behind the text */}
             <img
                 src={user.profilePic || fallbackImage}
                 alt={`${user.displayName}'s profile`}
@@ -40,9 +39,8 @@ const UserCard = ({ user, onConnect, isConnecting }) => {
             />
 
             {/* --- GRADIENT & CONTENT --- */}
-            {/* Changed to 'relative' & 'flex-grow' so the card height adapts to content if it gets too long */}
-            {/* Corrected 'bg-linear' to 'bg-gradient' to ensure readability */}
-            <div className="relative z-10 grow flex flex-col justify-end p-6 bg-linear-to-t from-black/80 via-black/20 to-transparent text-white h-full">
+            {/* Added pointer-events-none so clicks pass through to the buttons */}
+            <div className="relative z-10 grow flex flex-col justify-end p-6 bg-gradient-to-t from-black/90 via-black/40 to-transparent text-white h-full pointer-events-none">
 
                 <h2 className="text-3xl font-bold drop-shadow-md">
                     {user.displayName || user.username}
@@ -52,8 +50,8 @@ const UserCard = ({ user, onConnect, isConnecting }) => {
                     @{user.username}
                 </p>
 
-                {/* Kept all your original icon colors and sizing */}
-                <div className="space-y-1 text-sm">
+                {/* ✅ FIXED: Removed mb-16 so content stays at the bottom */}
+                <div className="space-y-1 text-sm mt-2">
 
                     {user.location && (
                         <div className="flex items-center gap-2">
@@ -98,6 +96,33 @@ const UserCard = ({ user, onConnect, isConnecting }) => {
                     )}
 
                 </div>
+
+            </div>
+
+            {/* --- HOVER ACTION BUTTONS --- */}
+            {/* These sit on top (z-20) and only appear on hover */}
+            <div className="absolute bottom-6 left-6 right-6 flex justify-between items-center z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-4 group-hover:translate-y-0">
+                
+                {/* Skip Button */}
+                <button 
+                    onClick={onSkip}
+                    className="btn btn-circle btn-lg bg-white/20 backdrop-blur-md border-none text-white hover:bg-white hover:text-red-500 shadow-xl transition-transform active:scale-95 pointer-events-auto"
+                >
+                    <XMarkIcon className="h-8 w-8" />
+                </button>
+
+                {/* Connect Button */}
+                <button 
+                    onClick={onConnect}
+                    disabled={isConnecting}
+                    className="btn btn-circle btn-lg bg-primary border-none text-white shadow-xl hover:scale-110 transition-transform active:scale-95 pointer-events-auto"
+                >
+                    {isConnecting ? (
+                        <span className="loading loading-spinner"></span>
+                    ) : (
+                        <HeartIcon className="h-8 w-8" />
+                    )}
+                </button>
 
             </div>
 

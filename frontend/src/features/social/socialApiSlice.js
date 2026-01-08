@@ -31,6 +31,12 @@ export const socialApiSlice = createApi({
             providesTags: (result, error, username) => [{ type: 'Profile', id: username }],
         }),
 
+        getUserMusicTaste: builder.query({
+            query: (username) => `/${username}/profile/music`,
+            transformResponse: (response) => response.userData,
+            providesTags: (result, error, username) => [{ type: 'Profile', id: username + '-music' }],
+        }),
+
         getConnections: builder.query({
             query: () => '/connections',
             transformResponse: (response) => response.data,
@@ -70,6 +76,7 @@ export const {
   useGetRecommendationsQuery,
   useGetRandomRecommendationsQuery,
   useGetUserProfileQuery,
+  useGetUserMusicTasteQuery,
   useGetConnectionsQuery,
   useGetRequestsQuery,
   useSendConnectionRequestMutation,

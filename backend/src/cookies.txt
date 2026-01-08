@@ -1,0 +1,2 @@
+# Netscape HTTP Cookie File
+.youtube.com	TRUE	/	TRUE	1801716163	__Secure-1PAPISID	bsQzOOrAgz1vfP9o/A3nFLfy0kL2pySIVc
