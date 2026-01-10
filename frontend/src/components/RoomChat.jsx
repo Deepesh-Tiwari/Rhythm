@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { PaperAirplaneIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/solid';
 import { sendMessage } from "../services/roomService"; // API wrapper we made earlier
+import CachedSongsList from './CachedSongList';
 
 const RoomChat = () => {
     const { chatHistory, room } = useSelector(state => state.room);
@@ -48,6 +49,10 @@ const RoomChat = () => {
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+
+                <CachedSongsList />
+                <div className="divider my-2 text-xs opacity-30">Messages</div>
+                
                 {chatHistory.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center opacity-30">
                         <p className="text-sm">No messages yet.</p>

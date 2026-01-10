@@ -6,9 +6,9 @@ import { addUser } from '../features/user/userSlice';
 import { useDispatch } from 'react-redux';
 
 const SignupPage = () => {
-    const [email, setEmail] = useState('deepeshtiwari789@gmail.com');
-    const [password, setPassword] = useState('Deepesh@123');
-    const [username, setUsername] = useState('dragon_warrior');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [username, setUsername] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -46,7 +46,7 @@ const SignupPage = () => {
                 <div className="flex flex-col items-center space-y-4">
                     <img src="svg1.svg" alt="Rhythm Logo" className="h-16 w-16" />
                     <h1 className="text-3xl font-bold text-base-content tracking-tight">
-                        Log in to Rhythm
+                        Sign up for Rhythm
                     </h1>
                 </div>
 
@@ -119,14 +119,14 @@ const SignupPage = () => {
                         className="btn btn-secondary w-full font-bold text-lg text-secondary-content"
                         disabled={loading}
                     >
-                        {loading ? <span className="loading loading-spinner"></span> : 'LOG IN'}
+                        {loading ? <span className="loading loading-spinner"></span> : 'SIGN UP'}
                     </button>
                 </form>
 
                 <div className="text-center pt-4">
-                    <span className="text-base-content/70">Don’t have an account? </span>
-                    <a href="/signup" className="link link-hover text-primary font-bold">
-                        Sign up
+                    <span className="text-base-content/70">Do have an account? </span>
+                    <a href="/login" className="link link-hover text-primary font-bold">
+                        Log In
                     </a>
                 </div>
             </div>

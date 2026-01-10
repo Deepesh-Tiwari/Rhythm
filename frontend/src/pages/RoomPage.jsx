@@ -5,23 +5,22 @@ import { useDispatch, useSelector } from 'react-redux';
 // Hooks & Actions
 import useSocketSetup from '../hooks/useSocketSetup';
 import { joinRoomThunk } from '../features/room/roomThunks';
-import { resetRoom , addMessage} from '../features/room/roomSlice'
+import { resetRoom, addMessage } from '../features/room/roomSlice';
 import { getSocket } from '../services/socketService';
 
-
-// Components (We will build these next)
+// Components
 import RoomSidebar from '../components/RoomSidebar';
 import RoomPlayer from '../components/RoomPlayer';
 import RoomQueue from '../components/RoomQueue';
 import RoomChat from '../components/RoomChat';
 
 const RoomPage = () => {
-    const { code } = useParams(); // The Room Code from URL
+    const { code } = useParams();
     const navigate = useNavigate();
     const dispatch = useDispatch();
 
     const { user } = useSelector(state => state.user);
-    const { room, isConnected, loading } = useSelector(state => state.room);
+    const { room, isConnected } = useSelector(state => state.room);
 
     // 1. Initial Data Fetch (REST)
     useEffect(() => {
@@ -30,11 +29,8 @@ const RoomPage = () => {
                 .unwrap()
                 .catch((err) => {
                     console.error("Failed to join:", err);
-                    // navigate('/'); // Redirect home if invalid
                 });
         }
-
-        // Cleanup when leaving
         return () => {
             dispatch(resetRoom());
         };
@@ -42,9 +38,6 @@ const RoomPage = () => {
 
     useEffect(() => {
         const socket = getSocket();
-        
-        // ✅ Simplified Check: If socket exists, attach listener. 
-        // We keep isConnected in deps to trigger re-run when connection stabilizes.
         if (!socket) return; 
 
         const handleNewMessage = (message) => {
@@ -59,7 +52,6 @@ const RoomPage = () => {
     }, [isConnected, dispatch]);
 
     // 2. Connect Socket (Real-Time)
-    // Only connect if we have the Room ID (from the fetch above) and User ID
     useSocketSetup(room?._id, user?._id);
 
     if (!room) {
@@ -71,17 +63,22 @@ const RoomPage = () => {
     }
 
     return (
-        <div className="h-[calc(100vh-4rem)] w-full bg-base-100 flex overflow-hidden">
+        // PARENT: Scrollable on Mobile, Hidden Overflow on Desktop
+        <div className="w-full bg-base-100 flex flex-col lg:flex-row h-auto lg:h-[calc(100vh-4rem)] overflow-y-auto lg:overflow-hidden">
 
-            {/* LEFT: Members Sidebar (Hidden on Mobile) */}
-            <div className="hidden md:block w-64 border-r border-base-300 bg-base-200/50">
+            {/* --- LEFT PANEL: Members Sidebar --- */}
+            {/* Mobile: Order 2 (Middle). Fixed height so it doesn't take up too much space. */}
+            {/* Desktop: Order 1 (Left). Full height. */}
+            <div className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-base-300 bg-base-200/50 order-2 lg:order-1 h-64 lg:h-full overflow-y-auto shrink-0">
                 <RoomSidebar />
             </div>
 
-            {/* CENTER: Player & Queue */}
-            <div className="flex-1 flex flex-col min-w-0">
+            {/* --- CENTER PANEL: Player & Queue --- */}
+            {/* Mobile: Order 1 (Top). Auto height. */}
+            {/* Desktop: Order 2 (Center). Scrollable. */}
+            <div className="flex-1 flex flex-col min-w-0 order-1 lg:order-2 h-auto lg:h-full lg:overflow-y-auto">
                 {/* Header */}
-                <div className="h-16 border-b border-base-300 flex items-center justify-between px-6 bg-base-100">
+                <div className="h-16 border-b border-base-300 flex items-center justify-between px-6 bg-base-100 shrink-0 sticky top-0 z-20">
                     <div>
                         <h1 className="font-bold text-lg">{room.name}</h1>
                         <span className="badge badge-neutral text-xs tracking-widest">{code}</span>
@@ -94,18 +91,17 @@ const RoomPage = () => {
                     </button>
                 </div>
 
-                {/* Content Area (Scrollable) */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                    {/* The Music Player */}
+                {/* Content Area */}
+                <div className="p-6 space-y-6">
                     <RoomPlayer />
-
-                    {/* The Queue */}
                     <RoomQueue />
                 </div>
             </div>
 
-            {/* RIGHT: Chat (Collapsible on Mobile usually, but static for now) */}
-            <div className="w-80 border-l border-base-300 bg-base-100 flex flex-col">
+            {/* --- RIGHT PANEL: Chat --- */}
+            {/* Mobile: Order 3 (Bottom). Fixed height so user can scroll messages. */}
+            {/* Desktop: Order 3 (Right). Full height. */}
+            <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-base-300 bg-base-100 flex flex-col order-3 lg:order-3 h-[600px] lg:h-full shrink-0">
                 <RoomChat />
             </div>
 
@@ -114,5 +110,3 @@ const RoomPage = () => {
 };
 
 export default RoomPage;
-
-

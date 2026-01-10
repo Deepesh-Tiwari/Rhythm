@@ -57,7 +57,10 @@ const CLIENT_URL = process.env.CLIENT_URL || "http://127.0.0.1:5173";
 
 // CORS Configuration
 // Allow both the specific client URL and localhost for easier dev testing
-const allowedOrigins = [CLIENT_URL, "http://localhost:5173", "http://127.0.0.1:5173"];
+const allowedOrigins = [CLIENT_URL];
+
+// FOR LOCAL TESTING(PUT THESE IN ALLOWED ORIGINS)
+// "http://localhost:5173", "http://127.0.0.1:5173"
 
 const io = new Server(server, {
     cors: {
