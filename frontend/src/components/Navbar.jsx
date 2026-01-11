@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutAction } from '../features/user/userThunks';
-import { 
-    HomeIcon, 
-    SignalIcon, 
-    UserGroupIcon, 
+import {
+    HomeIcon,
+    SignalIcon,
+    UserGroupIcon,
     BellIcon,
     MoonIcon,
     SunIcon,
     UserCircleIcon,
-    ArrowRightOnRectangleIcon,
+    PowerIcon,
     Bars3Icon,
     MusicalNoteIcon,
     InformationCircleIcon
@@ -109,7 +109,7 @@ const Navbar = () => {
                             <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
                                 <Bars3Icon className="w-6 h-6" />
                             </div>
-                            <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52 border border-base-300">
+                            <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-1 p-2 shadow bg-base-100 rounded-box w-52 border border-base-300">
                                 <ProtectedNavItems />
                                 <div className="divider my-0"></div>
                                 <li>
@@ -126,7 +126,7 @@ const Navbar = () => {
                                     <img alt="Profile" src={user?.profilePic || 'https://via.placeholder.com/150'} />
                                 </div>
                             </div>
-                            <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-300">
+                            <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-1 p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-300">
                                 <li className="menu-title px-4 py-2 opacity-50 uppercase text-xs font-bold tracking-wider">
                                     {user?.displayName || user?.username}
                                 </li>
@@ -138,7 +138,7 @@ const Navbar = () => {
                                 </li>
                                 <li>
                                     <a onClick={handleLogout} className="text-error">
-                                        <ArrowRightOnRectangleIcon className="w-4 h-4" /> Logout
+                                        <PowerIcon className="w-4 h-4" /> Logout
                                     </a>
                                 </li>
                             </ul>
@@ -146,23 +146,40 @@ const Navbar = () => {
                     </>
                 ) : (
                     <div className="flex items-center gap-2">
-                         {/* Mobile About Icon */}
-                         <Link to="/about" className="btn btn-ghost btn-circle lg:hidden">
+                        {/* Mobile About Icon */}
+                        <Link to="/about" className="btn btn-ghost btn-circle lg:hidden">
                             <InformationCircleIcon className="w-6 h-6" />
                         </Link>
-                        
+
+                        {/* ✅ FIXED: Desktop Buttons now change style based on active page */}
                         <div className="hidden lg:flex gap-2">
-                            <Link to="/login" className="btn btn-ghost btn-sm">Log In</Link>
-                            <Link to="/signup" className="btn btn-primary btn-sm">Sign Up</Link>
+                            <Link
+                                to="/login"
+                                className={`btn btn-sm ${location.pathname === '/login' ? 'btn-primary' : 'btn-ghost'}`}
+                            >
+                                Log In
+                            </Link>
+                            <Link
+                                to="/signup"
+                                className={`btn btn-sm ${location.pathname === '/signup' ? 'btn-primary' : 'btn-ghost'}`}
+                            >
+                                Sign Up
+                            </Link>
                         </div>
-                         {/* Mobile Login/Signup Menu */}
-                         <div className="dropdown dropdown-end lg:hidden">
-                             <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
+
+                        {/* Mobile Login/Signup Menu */}
+                        <div className="dropdown dropdown-end lg:hidden">
+                            <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
                                 <Bars3Icon className="w-6 h-6" />
                             </div>
-                            <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52 border border-base-300">
-                                <li><Link to="/login">Log In</Link></li>
-                                <li><Link to="/signup">Sign Up</Link></li>
+                            <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-1 p-2 shadow bg-base-100 rounded-box w-52 border border-base-300">
+                                {/* ✅ FIXED: Mobile links also use active highlighting */}
+                                <li>
+                                    <Link to="/login" className={location.pathname === '/login' ? 'text-primary font-bold' : ''}>Log In</Link>
+                                </li>
+                                <li>
+                                    <Link to="/signup" className={location.pathname === '/signup' ? 'text-primary font-bold' : ''}>Sign Up</Link>
+                                </li>
                             </ul>
                         </div>
                     </div>
